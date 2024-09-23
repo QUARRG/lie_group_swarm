@@ -40,20 +40,21 @@ agents_r[:, 2, 0] = np.array([0.36,0.17 ,0]).T
 embedding = Embedding(r, phi_dot,k_phi, 'circle',n_agents)
 
 
-for i in range(5):
+for i in range(10):
     phi_new, target_r_new, target_v_new, _, phi_diff_new, distances_new = embedding.targets(agents_r[:,:,0], phi_cur[:,0])
     
-    Wr_r_new, f_T_r_new, angles_new, Ca_r_new = generate_reference(va_r_dot[:,:,0],Ca_r[:,:,:,0],va_r[:,:,0],dt)
+    Wr_r_new, f_T_r_new, angles_new,_, Ca_r_new = generate_reference(va_r_dot[:,:,0],Ca_r[:,:,:,0],va_r[:,:,0],dt)
+    Ca_r[:,:,:,0] = Ca_r_new
     if i >0:
         va_r_dot[:,:,i] = (va_r[:,:,i] - va_r[:,:,i-1])/dt
-        
+
 Ca_r[:,:,:,0] = Ca_r_new
 ra_r[:,:,0] = target_r_new
 va_r[:,:,0] = target_v_new
 phi_cur[:,0] = phi_new
 
 for i in range(N-1):
-    Wr_r_new, f_T_r_new, angles_new, Ca_r_new = generate_reference(va_r_dot[:,:,i],Ca_r[:,:,:,i],va_r[:,:,i],dt)
+    Wr_r_new, f_T_r_new, angles_new,_, Ca_r_new = generate_reference(va_r_dot[:,:,i],Ca_r[:,:,:,i],va_r[:,:,i],dt)
     Ca_r[:,:,:,i+1] = Ca_r_new
     f_T_r[:,i] = f_T_r_new
     angles[:,:,i] = angles_new

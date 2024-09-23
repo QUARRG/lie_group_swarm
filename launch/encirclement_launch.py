@@ -95,7 +95,7 @@ def parse_yaml(context):
 
     Nodes.append(Node(
         package='crazy_encirclement',
-        executable='encirclement',
+        executable='encirclement.py',
         name='encirclement',
         output='screen',
         parameters=[{'robots': robots_list}]
