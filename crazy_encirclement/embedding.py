@@ -112,6 +112,9 @@ class Embedding():
             norm = np.sqrt(a**2 + b**2)
             a = a / norm
             b = b / norm
+        elif self.tactic == 'circle':
+            a = 1
+            b = 0
         return np.quaternion(a, b, 0, 0)
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)
