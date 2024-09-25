@@ -15,18 +15,18 @@ def generate_reference(va_r_dot,Ca_r,va_r,dt):
     fa_r = mb*va_r_dot +mb*g*I3 + Ca_r@D@Ca_r.T@va_r
     f_T_r = I3.T@Ca_r.T@fa_r.T
     if np.linalg.norm(fa_r) != 0:
-        r3 = fa_r/np.linalg.norm(fa_r)
+        r3 = fa_r.reshape(3,1)/np.linalg.norm(fa_r)
     else:
         r3 = np.zeros((3,1))
 
     aux = R3_so3(r3)@ca_1;
     if np.linalg.norm(aux) != 0:
-        r2 = aux/np.linalg.norm(aux);
+        r2 = aux.reshape(3,1)/np.linalg.norm(aux);
     else:
         r2 = np.zeros((3,1))
 
-    r1 = R3_so3(r2)@r3;
-    Ca_r_new = np.array((r1, r2, r3))
+    r1 = (R3_so3(r2)@r3).reshape(3,1);
+    Ca_r_new = np.hstack((r1, r2, r3))
     if np.linalg.det(Ca_r) != 0:
         Wr_r = so3_R3(np.linalg.inv(Ca_r)@Ca_r_new)/dt
     else:
@@ -38,9 +38,9 @@ def generate_reference(va_r_dot,Ca_r,va_r,dt):
     return Wr_r, f_T_r, angles, quaternion, Ca_r_new
 
 def R3_so3(w):
-    v3 = w[2]
-    v2 = w[1]
-    v1 = w[0]
+    v3 = w[2,0]
+    v2 = w[1,0]
+    v1 = w[0,0]
     so3 = np.array([[ 0 , -v3,  v2],
           [v3,   0, -v1],
           [-v2,  v1,   0]])

@@ -22,7 +22,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'encirclement = crazy_encirclement.encirclement:main'
+            'encirclement = crazy_encirclement.encirclement:main',
+            'crazy_circle = crazy_encirclement.crazy_circle:main',
         ],
     },
 )

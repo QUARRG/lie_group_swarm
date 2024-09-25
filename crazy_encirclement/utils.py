@@ -20,6 +20,7 @@ def generate_reference(va_r_dot,Ca_r,va_r,dt):
     angles = np.zeros((3,n_agents))
     quaternion = np.zeros((4,n_agents))
     for i in range(n_agents):
+        mb= 1
         fa_r = mb*va_r_dot[:,i] +mb*g*I3 + Ca_r[:,:,i]@D@Ca_r[:,:,i].T@va_r[:,i]
         f_T_r[i] = I3.T@Ca_r[:,:,i].T@fa_r.T
         if np.linalg.norm(fa_r) != 0:
@@ -33,11 +34,36 @@ def generate_reference(va_r_dot,Ca_r,va_r,dt):
         else:
             r2 = np.zeros((3,1))
 
-        r1 = R3_so3(r2)@r3.reshape(3,1);
-        Ca_r_new[:,:,i] = np.hstack((r1, r2, r3)).T
+        r1 = (R3_so3(r2)@r3).reshape(3,1);
+        Ca_r_new[:,:,i] = np.hstack((r1, r2, r3))
         if np.linalg.det(Ca_r[:,:,i]) != 0:
             Wr_r[:,i] = so3_R3(np.linalg.inv(Ca_r[:,:,i])@Ca_r_new[:,:,i])/dt
+        
+        print(Ca_r_new[:,:,i])
+        print(Wr_r[:,i])
 
+        mb = 0.1
+        fa_r = mb*va_r_dot[:,i] +mb*g*I3 + Ca_r[:,:,i]@D@Ca_r[:,:,i].T@va_r[:,i]
+        f_T_r[i] = I3.T@Ca_r[:,:,i].T@fa_r.T
+        if np.linalg.norm(fa_r) != 0:
+            r3 = fa_r.reshape(3,1)/np.linalg.norm(fa_r)
+        else:
+            r3 = np.zeros((3,1))
+
+        aux = R3_so3(r3)@ca_1;
+        if np.linalg.norm(aux) != 0:
+            r2 = aux.reshape(3,1)/np.linalg.norm(aux);
+        else:
+            r2 = np.zeros((3,1))
+
+        r1 = (R3_so3(r2)@r3).reshape(3,1);
+        Ca_r_new[:,:,i] = np.hstack((r1, r2, r3))
+        if np.linalg.det(Ca_r[:,:,i]) != 0:
+            Wr_r[:,i] = so3_R3(np.linalg.inv(Ca_r[:,:,i])@Ca_r_new[:,:,i])/dt
+        print('new, mb = 0.1')
+        print(Ca_r_new[:,:,i])
+        print(Wr_r[:,i])
+        input("Press Enter to continue...")
         angles[:,i] = R.from_matrix(Ca_r_new[:,:,i]).as_euler('zyx', degrees=False)
         quaternion[:,i] = R.from_matrix(Ca_r_new[:,:,i]).as_quat()
         

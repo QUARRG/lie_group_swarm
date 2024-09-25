@@ -70,6 +70,8 @@ class Embedding():
             target_r[0, i] = pos_d[0]
             target_r[1, i] = pos_d[1]
             target_r[2, i] = pos_d[2]
+            if self.tactic == 'circle':
+                target_r[2,i] = 0.5
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
         k = 0
         for i in range(self.n):

@@ -68,6 +68,7 @@ def parse_yaml(context):
             output='screen',
             parameters= server_params,
         ))
+
     Nodes.append(Node(
             package='crazyflie',
             executable='crazyflie_server',
@@ -79,15 +80,21 @@ def parse_yaml(context):
         ))
       
     for robot in crazyflies['robots']:
-        #if crazyflies[str(robot)]['enabled']:
         if crazyflies['robots'][robot]['enabled']:
             Nodes.append(Node(
-                package='crazy_encirclement',
-                executable='crazy_circle',
-                name='crazy_circle',
+                package='crazyflie',
+                executable='watch_dog.py',
+                name='watch_dog',
                 output='screen',
                 parameters=[{'robot_prefix': robot}]
-                ))
+            ))
+    #         Nodes.append(Node(
+    #             package='crazy_encirclement',
+    #             executable='crazy_circle',
+    #             name='crazy_circle',
+    #             output='screen',
+    #             parameters=[{'robot_prefix': robot}]
+    #             ))
     return Nodes
 
 def generate_launch_description():

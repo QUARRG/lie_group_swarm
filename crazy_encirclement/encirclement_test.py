@@ -11,7 +11,7 @@ r = 0.5
 k_phi = 5
 kx = 10
 kv = 2.5*np.sqrt(2)
-n_agents = 3
+n_agents = 2
 phi_dot = 0.5
 dt = 0.001
 
@@ -34,7 +34,7 @@ Wr_r = np.zeros((3,n_agents,N))
 
 agents_r[:, 0, 0] = np.array([0.15,-0.15,0]).T
 agents_r[:, 1, 0] = np.array([-0.5,-0.05,0]).T
-agents_r[:, 2, 0] = np.array([0.36,0.17 ,0]).T
+#agents_r[:, 2, 0] = np.array([0.36,0.17 ,0]).T
 
 
 embedding = Embedding(r, phi_dot,k_phi, 'circle',n_agents)
