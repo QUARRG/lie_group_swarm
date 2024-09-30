@@ -12,10 +12,11 @@ class Embedding():
         self.n = n_agents
 
        
-    def targets(self,agent_r, phi_prev):
+    def targets(self,agent_r, agent_v,phi_prev,dt):
 
         target_r = np.zeros((3, self.n))
         target_v = np.zeros((3, self.n))
+        target_a = np.zeros((3, self.n))
         phi_cur = np.zeros(self.n)
         unit = np.zeros((self.n, 3))
         n_diff = int(np.math.factorial(self.n) / (math.factorial(2) * math.factorial(self.n-2)))
@@ -79,6 +80,8 @@ class Embedding():
             target_r[2, i] = pos_z
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
 
+            target_a = (target_r - agent_v)/dt
+
         k = 0
         for i in range(self.n):
             for j in range(i+1, self.n):
@@ -86,7 +89,7 @@ class Embedding():
                 phi_diff[k] = np.arccos(np.dot(unit[i,:],unit[j,:]))
                 k += 1
             
-        return phi_cur, target_r, target_v, pos_circle, phi_diff, distances
+        return phi_cur, target_r, target_v, target_a, pos_circle, phi_diff, distances
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k):
         phi_ki = np.mod(phi_i - phi_k, 2*np.pi)
