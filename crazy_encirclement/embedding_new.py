@@ -71,7 +71,7 @@ class Embedding():
                 wd = self.phi_dot
                 phi_i = phi_cur[0]
             phi_dot_x = 0
-            phi_dot_x = self.phi_dot*np.cos(phi)*np.sin(phi)
+            phi_dot_x = self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
             phi_dot_y = 0
@@ -93,7 +93,7 @@ class Embedding():
             x = self.r * np.cos(phi_i)
             y = self.r * np.sin(phi_i)
             pos_d_hat = np.array([x, y, 0])
-            pos_d = Rot@pos_d_hat.T
+            pos_d = Rot@Rot_z@pos_d_hat.T
             # pos_d = Rot@pos_d_hat.T
 
             target_r[0, i] = pos_d[0]
