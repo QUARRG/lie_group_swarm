@@ -1,4 +1,4 @@
-from crazy_encirclement.crazy_encirclement.embedding_SO3_sim import Embedding
+from embedding_SO3_sim import Embedding
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -7,8 +7,8 @@ from scipy.spatial.transform import Rotation as R
 from utils import generate_reference
 from icecream import ic
 
-N = 10000
-r = 1
+N = 2000
+r = 0.5
 k_phi = 5
 kx = 15
 kv = 2.5*np.sqrt(2)
