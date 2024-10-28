@@ -5,7 +5,7 @@ from motion_capture_tracking_interfaces.msg import NamedPoseArray
 from crazyflie_interfaces.msg import FullState, StringArray
 from std_msgs.msg import Bool
 from rclpy.duration import Duration
-from crazy_encirclement.embedding import Embedding
+from crazy_encirclement.crazy_encirclement.embedding_cf import Embedding
 from std_srvs.srv import Empty
 from std_msgs.msg import Float32MultiArray, Float32
 
