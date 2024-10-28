@@ -21,7 +21,7 @@ class Embedding():
         self.t = np.arange(0,self.T, self.dt)
 
        
-    def targets(self,agent_r, agent_v,phi_prev):
+    def targets(self,agent_r,phi_prev):
 
         target_r = np.zeros((3, self.n))
         target_v = np.zeros((3, self.n))
