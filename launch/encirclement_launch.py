@@ -95,8 +95,8 @@ def parse_yaml(context):
             robots_list.append(robot)
             # Nodes.append(Node(
             #     package='crazy_encirclement',
-            #     executable='encirclement',
-            #     name=robot+'_encirclement',
+            #     executable='encirclement_node',
+            #     name=robot+'_encirclement_node',
             #     output='screen',
             #     parameters=[{'robot': robot}]
             #     ))

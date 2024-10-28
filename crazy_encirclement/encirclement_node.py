@@ -74,11 +74,6 @@ class Encirclement(Node):
             self._poses_changed, qos_profile
         )
         
-        # self.create_subscription(
-        #     StringArray,
-        #     '/agents_order',
-        #     self._order_callback,
-        #     10)
         self.create_subscription(
             Float32MultiArray,
             '/'+self.robot+'/phases',
@@ -101,31 +96,7 @@ class Encirclement(Node):
         self.target_v = np.zeros(3)
         self.kx = 2
         self.kv = 2.5*np.sqrt(2)
-        # if self.n_agents > 2:
-        #     self.phases = np.zeros(3)
-        #     self.create_subscription(
-        #         Float32,
-        #         '/'+self.order[0]+'/phase',
-        #         self._heading_phase_callback,
-        #         10)
-        #     self.create_subscription(
-        #         Float32,
-        #         '/'+self.order[2]+'/phase',
-        #         self._lagging_phase_callback,
-        #         10)
-        # else:            
-        #     self.create_subscription(
-        #         Float32,
-        #         '/'+self.order[0]+'/phase',
-        #         self._heading_phase_callback,
-        #         10)
-        #     self.create_subscription(
-        #         Float32,
-        #         '/'+self.order[0]+'/phase',
-        #         self._lagging_phase_callback,
-        #         10)
-            
-            # self.phases = np.zeros(2)
+
         self.timer_period = 0.010
         self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.timer_period)
         while (not self.has_initial_pose):
@@ -193,40 +164,6 @@ class Encirclement(Node):
 
             #self.publishers[i].publish(msg)
     
-    # def _order_callback(self, msg):
-        
-    #     order = msg.data
-    #     if not self.has_order:
-    #         self.has_order = True
-    #         for i in range(len(order)):
-
-    #             if order[i] == self.robot:
-    #                 self.has_order = True
-    #                 if self.n_agents > 2:
-    #                     if i == 0:
-    #                         self.order.append(order[-1])
-    #                         self.order.append(order[i])
-    #                         self.order.append(order[i+1])
-    #                     elif i == len(order)-1:
-    #                         self.order.append(order[i-1])
-    #                         self.order.append(order[i])
-    #                         self.order.append(order[0])
-    #                     else:
-    #                         self.order.append(order[i-1])
-    #                         self.order.append(order[i])
-    #                         self.order.append(order[i+1])
-    #                 else: 
-    #                     #TO DO: check what to do with 2 agents ###################
-    #                     if i == 1:
-    #                         self.order.append(order[i-1])
-    #                         self.order.append(order[i])
-    #                         self.order.append(order[i-1])
-    #                     else:
-    #                         self.order.append(order[i+1])
-    #                         self.order.append(order[i])
-    #                         self.order.append(order[i+1])
-    #                 self.info(f"Order of agents: {self.order}")
-
     def _poses_changed(self, msg):
         """
         Topic update callback to the motion capture lib's
@@ -263,17 +200,6 @@ class Encirclement(Node):
                     self.final_pose[2] = pose.pose.position.z
             self.r_landing[0,:] += self.final_pose[0]*np.ones(len(self.t_landing))
             self.r_landing[1,:] += self.final_pose[1]*np.ones(len(self.t_landing))
-        # else:
-        #     for pose in msg.poses:
-        #         if pose.name == self.robot:
-        #             self.agents_r[0] = pose.pose.position.x
-        #             self.agents_r[1] = pose.pose.position.y
-        #             self.agents_r[2] = pose.pose.position.z
-        #             quat = [pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w]
-        #             self.Ca_b[:,:] = R.from_quat(quat).as_matrix()
-        #             self.agents_v[0] = pose.velocity.linear.x
-        #             self.agents_v[1] = pose.velocity.linear.y
-        #             self.agents_v[2] = pose.velocity.linear.z
 
     def _phase_callback(self, msg):
         self.phases = msg.data
