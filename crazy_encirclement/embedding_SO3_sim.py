@@ -78,12 +78,13 @@ class Embedding():
             else:
                 wd = self.phi_dot
                 phi_i = phi_cur[0]
+
+            # ic(np.rad2deg(phi_i))
+            # input()
             phi_dot_x = 0
             phi_dot_x = self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
-            if j == 0:
-                ic(Rot_x)
             phi_dot_y = 0
             v_d_hat_y = np.array([0, -phi_dot_y, 0])
             Rot_y = expm(R3_so3(v_d_hat_y.reshape(-1,1))*self.dt)
@@ -91,7 +92,8 @@ class Embedding():
             Rot_z = expm(R3_so3(v_d_hat_z.reshape(-1,1))*self.dt)
             if not self.pass_zero[i]:
                 self.pass_zero[i] = phi_i > phi_prev[i]
-            self.pass_ref[i] = phi_i < self.initial_phase[i]
+
+            #self.pass_ref[i] = phi_i < self.initial_phase[i]
             # if self.pass_ref[i]:
                 # ic(self.pass_ref[i])
                 # ic(self.pass_zero[i])
@@ -112,7 +114,10 @@ class Embedding():
             #     #ic(Rot_x)
             #     self.Rot[:,:,i] = Rot_x
             # else:
-            self.Rot[:,:,i] = Rot_x@self.Rot[:,:,i]
+            if self.pass_zero[i]:
+                self.Rot[:,:,i] = Rot_x@self.Rot[:,:,i]
+            else:
+                self.Rot[:,:,i] = np.eye(3)
             Rot = self.Rot[:,:,i]#@Rot_y@Rot_z
 
             v_d = self.Rot[:,:,i]@v_d_hat_z.T
@@ -172,3 +177,4 @@ class Embedding():
             q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
             q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w
         )
+        

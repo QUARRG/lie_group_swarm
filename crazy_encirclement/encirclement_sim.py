@@ -41,9 +41,9 @@ Wr_r = np.zeros((3,n_agents,N))
 
 agents_r[:, 0, 0] = np.array([r*np.cos(0),r*np.sin(0),0]).T
 agents_r[:, 1, 0] = np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(120)),0]).T
-agents_r[:, 2, 0] = np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(-120)) ,0]).T
+agents_r[:, 2, 0] = np.array([r*np.cos(np.deg2rad(-120)),r*np.sin(np.deg2rad(-120)) ,0]).T
 for i in range(n_agents):
-    phi_cur[i,0] = np.arctan2(agents_r[1,i,0],agents_r[0,i,0])
+    phi_cur[i,0] = np.mod(np.arctan2(agents_r[1,i,0],agents_r[0,i,0]),2*np.pi)
 
 embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,agents_r[:,:,0],dt)
 
