@@ -25,6 +25,7 @@ setup(
             'encirclement = crazy_encirclement.encirclement_node:main',
             'crazy_circle = crazy_encirclement.crazy_circle:main',
             'agents_order = crazy_encirclement.agents_order:main',
+            'circle_distortion = crazy_encirclement.circle_distortion:main',
         ],
     },
 )

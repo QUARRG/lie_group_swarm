@@ -5,7 +5,7 @@ from motion_capture_tracking_interfaces.msg import NamedPoseArray
 from crazyflie_interfaces.msg import FullState, StringArray
 from std_msgs.msg import Bool
 from rclpy.duration import Duration
-from crazy_encirclement.crazy_encirclement.embedding_SO3_sim import Embedding
+from crazy_encirclement.embedding_SO3_sim import Embedding
 from std_srvs.srv import Empty
 from std_msgs.msg import Float32MultiArray, Float32
 from geometry_msgs.msg import Pose
@@ -21,7 +21,7 @@ class Circle_distortion(Node):
         self.info = self.get_logger().info
         self.info('Circle distortion node has been started.')
         self.declare_parameter('r', '0.5')
-        self.declare_parameter('robot', 'C04')
+        self.declare_parameter('robot', 'C05')
         self.declare_parameter('number_of_agents', '1')
         self.declare_parameter('phi_dot', '0.5')
         self.declare_parameter('tactic', 'circle')    
@@ -29,7 +29,7 @@ class Circle_distortion(Node):
         self.robot = self.get_parameter('robot').value
         self.n_agents  = int(self.get_parameter('number_of_agents').value)
         self.r  = float(self.get_parameter('r').value)
-        self.k_phi  = float(self.get_parameter('k_phi').value)
+        self.k_phi  = 0#float(self.get_parameter('k_phi').value)
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
         self.tactic  = self.get_parameter('tactic').value
         self.reboot_client = self.create_client(Empty,  '/'+'all'+'/reboot')
@@ -42,10 +42,13 @@ class Circle_distortion(Node):
         self.land_flag = False
         self.encircle_flag = False
         self.has_order = False
-        self.final_pose = np.zeros(3)
-        self.initial_pose = np.zeros(3)
-        self.agents_r = np.zeros(3)
-        self.hover_height = 0.4
+        self.final_pose = np.zeros((3,1))
+        self.initial_pose = np.zeros((3,1))
+        self.agents_r = np.zeros((3,1))
+        
+        self.agents_v = np.zeros((3,1))
+        self.hover_height = 0.6
+        self.agents_r[2,0] = self.hover_height
         self.i_landing = 0
         self.i_takeoff = 0
         self.phases = np.zeros(self.n_agents)
@@ -66,10 +69,10 @@ class Circle_distortion(Node):
             depth=1,
             deadline=Duration(seconds=0, nanoseconds=0))
 
-        self.create_subscription(
-            NamedPoseArray, "/poses",
-            self._poses_changed, qos_profile
-        )
+        # self.create_subscription(
+        #     NamedPoseArray, "/poses",
+        #     self._poses_changed, qos_profile
+        # )
         
         # self.create_subscription(
         #     Float32MultiArray,
@@ -79,8 +82,8 @@ class Circle_distortion(Node):
         
         # while not self.has_order:
         #     rclpy.spin_once(self, timeout_sec=0.1)
-        while (not self.has_initial_pose):
-            rclpy.spin_once(self, timeout_sec=0.1)
+        # while (not self.has_initial_pose):
+        #     rclpy.spin_once(self, timeout_sec=0.1)
 
         self.info(f"Initial pose: {self.initial_pose}")
         self.info("First pose received. Moving on...")
@@ -95,9 +98,10 @@ class Circle_distortion(Node):
         self.kv = 2.5*np.sqrt(2)
 
         self.timer_period = 0.010
-        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.timer_period)
-        while (not self.has_initial_pose):
-            rclpy.spin_once(self, timeout_sec=0.1)
+
+        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.timer_period)
+        # while (not self.has_initial_pose):
+        #     rclpy.spin_once(self, timeout_sec=0.1)
         self.landing_traj(4)
         self.takeoff_traj(3)
 
@@ -130,29 +134,29 @@ class Circle_distortion(Node):
                 if self.encircle_flag:
                     self.has_hovered = True
                     self.info('Hovering finished')
-
+            
             elif not self.has_landed and self.has_hovered:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
-                #self.info("encirclement")
                 beginning = time.time()
 
-                self.phi_cur.data, target_r, _, _, _= self.embedding.targets(self.agents_r,self.phases)
-                self.next_point(target_r)
+                phi, target_r, target_v, _, _= self.embedding.targets(self.agents_r,self.phases)
+                self.phi_cur.data = float(phi)
                 self.phase_pub.publish(self.phi_cur)
                 if self.n_agents > 1:
-                    self.phases[1] = self.phi_cur.data.copy()
+                    self.phases[1] = phi
                 else:
-                    self.phases = self.phi_cur.data.copy()
+                    self.phases = phi
 
                 self.info(f"Time to calculate: {time.time()-beginning}")
  
                 # self.info(f"target_r_new: {target_r_new}")
                 # self.info(f"target_v_new: {target_v_new}")
                 # self.info(f"agents_r: {self.agents_r}")
-
-                # accels = self.kx*(target_r_new - self.agents_r) + self.kv*(self.target_v_new - self.agents_v)
-                # agents_v = self.agents_v + accels*self.timer_period
-                # self.agents_r = self.agents_r + agents_v*self.timer_period + 0.5*accels*self.timer_period**2
-                # self.agents_v = agents_v
+                target_r[2,0] = target_r[2,0] + self.hover_height + 0.25
+                accels = self.kx*(target_r - self.agents_r) + self.kv*(target_v - self.agents_v)
+                agents_v = self.agents_v + accels*self.timer_period
+                self.agents_r = self.agents_r + agents_v*self.timer_period + 0.5*accels*self.timer_period**2
+                self.agents_v = agents_v
+                self.next_point(self.agents_r[:,0])
                 #self.landing()
                 
 
@@ -216,8 +220,8 @@ class Circle_distortion(Node):
         self.t_takeoff = np.arange(0,t_max,self.timer_period)
         #self.t_takeoff = np.tile(t_takeoff[:,np.newaxis],(1,self.n_agents))
         self.r_takeoff = np.zeros((3,len(self.t_takeoff))) 
-        self.r_takeoff[0,:] += self.initial_pose[0]*np.ones(len(self.t_takeoff))
-        self.r_takeoff[1,:] += self.initial_pose[1]*np.ones(len(self.t_takeoff))
+        self.r_takeoff[0,:] += self.initial_pose[0,0]*np.ones(len(self.t_takeoff))
+        self.r_takeoff[1,:] += self.initial_pose[1,0]*np.ones(len(self.t_takeoff))
         self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/t_max)
         v,_ = trajectory(self.r_takeoff,self.timer_period)
         self.r_dot_takeoff = v
@@ -240,8 +244,8 @@ class Circle_distortion(Node):
     def hover(self):
 
         msg = Pose()
-        msg.position.x = self.initial_pose[0]
-        msg.position.y = self.initial_pose[1]
+        msg.position.x = self.initial_pose[0,0]
+        msg.position.y = self.initial_pose[1,0]
         msg.position.z = self.hover_height
         self.position_pub.publish(msg)
 
