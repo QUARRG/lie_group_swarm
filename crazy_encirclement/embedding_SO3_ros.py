@@ -118,6 +118,7 @@ class Embedding():
             self.target_r[2, i] = np.clip(self.target_r[2, i], 0.2, 1.5)
 
             self.target_v[:, i] = (self.target_r[:, i] - target_r_prev)/self.dt
+            self.target_v[:,i] =np.clip(self.target_v[:,i],-0.6,0.6)
 
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5

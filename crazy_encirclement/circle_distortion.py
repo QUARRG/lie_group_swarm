@@ -98,6 +98,7 @@ class Circle_distortion(Node):
 
         self.position_pub = self.create_publisher(Pose,'/'+ self.robot + '/cmd_position', 10)
         self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 10)
+        self.full_state_pub = self.create_publisher(FullState,'/'+ self.robot + '/cmd_full_state', 10)
 
         #initiating some variables
         self.target_v = np.zeros(3)
@@ -146,13 +147,13 @@ class Circle_distortion(Node):
 
                 self.info(f"agents: {self.agents_r}")
                 phi, target_r, target_v= self.embedding.targets(self.agents_r,self.phases)
-                self.next_point(target_r[:,0])
+                self.next_point_full_state(target_r[:,0],target_v[:,0])
                 self.phi_cur.data = float(phi)
                 self.phase_pub.publish(self.phi_cur)
                 if self.n_agents > 1:
                     self.phases[1] = phi
                 else:
-                    self.phases = phi
+                    self.phases[0] = phi
 
                 # self.info(f"target_r_new: {target_r_new}")
                 # self.info(f"target_v_new: {target_v_new}")
@@ -272,6 +273,26 @@ class Circle_distortion(Node):
 
             
         self.position_pub.publish(msg)
+
+    def next_point_full_state(self,r,v,v_dot=np.zeros(3),Wr_r_new=np.zeros(3),quat_new=np.array([0,0,0,1])):
+        msg = FullState()
+        msg.pose.position.x = float(r[0])
+        msg.pose.position.y = float(r[1])
+        msg.pose.position.z = float(r[2])
+        msg.acc.x = float(v_dot[0])
+        msg.acc.y = float(v_dot[1])
+        msg.acc.z = float(v_dot[2])
+        msg.pose.orientation.x = float(quat_new[0])
+        msg.pose.orientation.y = float(quat_new[1])
+        msg.pose.orientation.z = float(quat_new[2])
+        msg.pose.orientation.w = float(quat_new[3])
+        msg.twist.linear.x = float(v[0])
+        msg.twist.linear.y = float(v[1])
+        msg.twist.linear.z = float(v[2])
+        msg.twist.angular.x = np.rad2deg(float(Wr_r_new[0]))
+        msg.twist.angular.y = np.rad2deg(float(Wr_r_new[1]))
+        msg.twist.angular.z = np.rad2deg(float(Wr_r_new[2]))
+        self.full_state_pub.publish(msg)
 
 def main():
     rclpy.init()

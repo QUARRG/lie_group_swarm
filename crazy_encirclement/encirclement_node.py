@@ -274,9 +274,7 @@ class Encirclement(Node):
         msg.twist.linear.z = float(v[2])
         msg.twist.angular.x = np.rad2deg(float(Wr_r_new[0]))
         msg.twist.angular.y = np.rad2deg(float(Wr_r_new[1]))
-        msg.twist.angular.z = np.rad2deg(float(Wr_r_new[2]))
-
-            
+        msg.twist.angular.z = np.rad2deg(float(Wr_r_new[2]))            
         self.full_state_pub.publish(msg)
 
 def main():
