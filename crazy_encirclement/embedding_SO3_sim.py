@@ -16,7 +16,7 @@ class Embedding():
         self.initial_phase = np.zeros(self.n)
         self.Rot_des = np.zeros((3,3,self.n))
         self.Rot_act = np.zeros((3,3,self.n))
-        self.scale = 0.1*self.phi_dot #scale the distortion around the x axis
+        self.scale = 25*self.phi_dot #scale the distortion around the x axis
         self.pass_zero = np.zeros(self.n)
         self.pass_ref = np.zeros(self.n)
         self.count = 0
@@ -51,16 +51,16 @@ class Embedding():
 
         for i in range(self.n):
             # Circle position
-            pos = np.array([agent_r[0, i], agent_r[1, i], agent_r[2, i]-0.6])
+            pos = np.array([agent_r[0, i] - self.phi_dot*np.cos(phi_prev[i])*np.sin(phi_prev[i]), agent_r[1, i] - self.r*np.cos(phi_prev[i])**2, agent_r[2, i]-0.6])
             #Rot = self.tactic_parameters(phi_i)
             #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
             
             pos_rot = np.linalg.inv(self.Rot_des[:,:,i])@pos.T
             phi, _ = self.cart2pol(pos_rot)
             if phi > 0 and phi < np.pi:
-                phi_dot_x = self.scale*self.phi_dot*np.cos(phi)*np.sin(phi)
+                phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
             else:
-                phi_dot_x = self.scale**np.cos(phi)*np.sin(phi)
+                phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
             self.Rot_act[:,:,i] = self.Rot_des[:,:,i].copy()#Rot_x@self.Rot_act[:,:,i]
@@ -95,18 +95,19 @@ class Embedding():
             # ic(np.rad2deg(phi_i))
             # input()
             phi_dot_x = 0
-            if phi_i > 0 and phi_i < np.pi:
-                phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
-            else:
-                phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
+            # if phi_i > 0 and phi_i < np.pi:
+            #     phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
+            # else:
+            phi_dot_x = np.abs(phi_i-phi_prev[i])*self.scale*np.cos(phi_i)*np.sin(phi_i)
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
-            phi_dot_y = 0*self.phi_dot*np.cos(phi_i)**2*np.sin(phi_i)
-            v_d_hat_y = np.array([0, -phi_dot_y, 0])
+            phi_dot_y = np.abs(phi_i-phi_prev[i])*self.scale*np.cos(phi_i)**2*np.sin(phi_i)
+            v_d_hat_y = 0*np.array([0, -phi_dot_y, 0])
             Rot_y = expm(R3_so3(v_d_hat_y.reshape(-1,1))*self.dt)
             v_d_hat_z = np.array([0, 0, -wd])
             Rot_z = expm(R3_so3(v_d_hat_z.reshape(-1,1))*self.dt)
             if not self.pass_zero[i]:
+                ic(i)
                 self.pass_zero[i] = phi_i > phi_prev[i]
 
             #self.pass_ref[i] = phi_i < self.initial_phase[i]
@@ -131,7 +132,9 @@ class Embedding():
             #     self.Rot[:,:,i] = Rot_x
             # else:
             if self.pass_zero[i]:
-                self.Rot_des[:,:,i] = Rot_x@self.Rot_act[:,:,i]
+
+                self.Rot_des[:,:,i] = Rot_x@Rot_y@self.Rot_act[:,:,i]
+
             else:
                 self.Rot_des[:,:,i] = np.eye(3)
             Rot = self.Rot_des[:,:,i]#@Rot_y@Rot_z
@@ -148,12 +151,13 @@ class Embedding():
             y = self.r * np.sin(phi_i)
             pos_d_hat = np.array([x, y, 0])
             pos_d = Rot@Rot_z@pos_d_hat.T
+            phi_d, _ = self.cart2pol(Rot_z@pos_d_hat.T)
+            
             # pos_d = Rot@pos_d_hat.T
 
-            target_r[0, i] = pos_d[0]
-            target_r[1, i] = pos_d[1]
+            target_r[0, i] = pos_d[0] + self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
+            target_r[1, i] = pos_d[1] + self.r*np.cos(phi_i)**2
             target_r[2, i] = pos_d[2] + 0.6
-
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]

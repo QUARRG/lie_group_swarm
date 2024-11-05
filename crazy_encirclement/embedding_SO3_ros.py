@@ -14,7 +14,7 @@ class Embedding():
         self.hover_height = hover_height
         self.n = n_agents
         self.dt = dt
-        self.scale = 0.3*self.phi_dot #scale the distortion around the x axis
+        self.scale = 50*self.phi_dot #scale the distortion around the x axis
         self.Rot = np.zeros((3,3))
         self.pass_zero = False
         self.pass_ref = False
@@ -29,45 +29,39 @@ class Embedding():
         self.T = 24
         self.t = np.arange(0,self.T, self.dt)
         self.target_r = initial_pos
-        self.target_v = np.zeros((3, self.n))
+        self.target_v = np.zeros(3)
        
     def targets(self,agent_r,phi_prev):
-
-        phi_cur = np.zeros(self.n)
-        pos_circle = np.zeros((3, self.n))
-
-
             # Circle position
         pos = np.array([agent_r[0], agent_r[1], agent_r[2]-self.hover_height])
         #Rot = self.tactic_parameters(phi_i)
         #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
+        
         pos_rot = np.linalg.inv(self.Rot_des)@pos.T
         phi_i, _ = self.cart2pol(pos_rot)
         # if phi > 0 and phi < np.pi:
-        #     phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
+        #     phi_dot_x = self.scale*self.phi_dot*np.cos(phi)*np.sin(phi)
         # else:
-        #     phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
+        #     phi_dot_x = self.scale**np.cos(phi)*np.sin(phi)
         # v_d_hat_x = np.array([-phi_dot_x, 0, 0])
         # Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
-        # self.Rot_act = self.Rot_des.copy()#Rot_x@self.Rot_act[:,:,i]
+        # self.Rot_act[:,:,i] = self.Rot_des[:,:,i].copy()#Rot_x@self.Rot_act[:,:,i]
 
         pos_x = pos_rot[0]
         pos_y = pos_rot[1]
         #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
 
-        pos_circle[0] = pos_x
-        pos_circle[1] = pos_y
-
-
             
-
-
-
         wd = self.phi_dot
 
 
+        # ic(np.rad2deg(phi_i))
+        # input()
         phi_dot_x = 0
-        phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
+        # if phi_i > 0 and phi_i < np.pi:
+        #     phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
+        # else:
+        phi_dot_x = np.abs(phi_i-phi_prev)*self.scale*np.cos(phi_i)*np.sin(phi_i)
         v_d_hat_x = np.array([-phi_dot_x, 0, 0])
         Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
         phi_dot_y = 0*self.phi_dot*np.cos(phi_i)**2*np.sin(phi_i)
@@ -78,33 +72,36 @@ class Embedding():
         if not self.pass_zero:
             self.pass_zero = phi_i > phi_prev
 
-        # else:
+
         if self.pass_zero:
             self.Rot_des = Rot_x@self.Rot_des
         else:
             self.Rot_des = np.eye(3)
         Rot = self.Rot_des#@Rot_y@Rot_z
 
+        v_d = Rot@v_d_hat_z.T
+        # v_d = Rot@v_d_hat_z.T
+        #v_x, v_y, v_z = v_d.parts[1:]
+        v = np.cross(v_d.T, agent_r.T)
 
         x = self.r * np.cos(phi_i)
         y = self.r * np.sin(phi_i)
         pos_d_hat = np.array([x, y, 0])
         pos_d = Rot@Rot_z@pos_d_hat.T
-
-        target_r_prev = self.target_r.copy()
+        # pos_d = Rot@pos_d_hat.T
+        target_r_old = self.target_r.copy()
         self.target_r[0] = pos_d[0]
         self.target_r[1] = pos_d[1]
         self.target_r[2] = pos_d[2] + self.hover_height
-        self.target_r[2] = np.clip(self.target_r[2], 0.2, 1.5)
+        self.target_r[2] = np.clip(self.target_r[2],0.15,1.5)
+        self.target_v = (self.target_r - target_r_old)/(self.dt/2)
 
-        self.target_v = (self.target_r- target_r_prev)/self.dt
-        self.target_v =np.clip(self.target_v,-0.6,0.6)
+        # if self.tactic == 'circle':
+        #     target_r[2,i] = 0.5
 
-            # if self.tactic == 'circle':
-            #     target_r[2,i] = 0.5
 
             
-        return phi_cur, self.target_r, self.target_v
+        return phi_i, self.target_r, self.target_v, phi_i
     
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k):

@@ -24,7 +24,7 @@ class Circle_distortion(Node):
         self.declare_parameter('r', '1')
         self.declare_parameter('robot', 'C20')
         self.declare_parameter('number_of_agents', '1')
-        self.declare_parameter('phi_dot', '0.1')
+        self.declare_parameter('phi_dot', '0.5')
         self.declare_parameter('tactic', 'circle')    
         self.declare_parameter('initial_pase', '0')
 
@@ -36,6 +36,14 @@ class Circle_distortion(Node):
         self.initial_phase = float(self.get_parameter('initial_pase').value)
         self.tactic  = self.get_parameter('tactic').value
         self.reboot_client = self.create_client(Empty,  '/'+'all'+'/reboot')
+
+        self.mb = 0.04
+        self.g = 9.81
+        self.I3 = np.array([0,0,1]).T.reshape(3)
+        w_r = 0 #reference yaw
+        self.ca_1 = np.array([np.cos(w_r),np.sin(w_r),0]).T #auxiliar vector 
+        self.Ca_r = np.eye(3)
+        self.Ca_b = np.eye(3)
 
         self.order = []
         self.has_initial_pose = False
@@ -53,10 +61,11 @@ class Circle_distortion(Node):
         self.quat = [0,0,0,1]
         self.agents_v = np.zeros(3)
         self.hover_height = 0.6
+        self.target_a = np.zeros(3)
         #change back #############################################################
-        # self.agents_r[0,0] = self.r*np.cos(self.initial_phase)
-        # self.agents_r[1,0] = self.r*np.sin(self.initial_phase)
-        # self.agents_r[2,0] = self.hover_height
+        # self.agents_r[0] = self.r*np.cos(self.initial_phase)
+        # self.agents_r[1] = self.r*np.sin(self.initial_phase)
+        # self.agents_r[2] = self.hover_height
         # self.initial_pose = self.agents_r.copy()
         self.i_landing = 0
         self.i_takeoff = 0
@@ -113,19 +122,19 @@ class Circle_distortion(Node):
         self.position_pub = self.create_publisher(Pose,'/'+ self.robot + '/cmd_position', 10)
         self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 10)
         self.full_state_pub = self.create_publisher(FullState,'/'+ self.robot + '/full_state', 10)
-        self.attitude_thrust_pub = self.create_publisher(Twist,'/'+ self.robot + '/cmd_vel_legacy', 10)
+        self.attitude_thrust_pub = self.create_publisher(Twist,'/'+ self.robot + '/vel_legacy', 100)
 
         #initiating some variables
         self.target_v = np.zeros(3)
-        self.kx = 10
+        self.kx = 5
         self.kv = 2.5*np.sqrt(2)
 
-        self.timer_period = 0.002
-        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.hover_height,self.timer_period)
+        self.timer_period = 0.01
+        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.hover_height,4*self.timer_period)
         # while (not self.has_initial_pose):
         #     rclpy.spin_once(self, timeout_sec=0.1)
         self.landing_traj(4)
-        self.takeoff_traj(2)
+        self.takeoff_traj(1)
 
         input("Press Enter to takeoff")
         #time.sleep(2.0)
@@ -158,25 +167,34 @@ class Circle_distortion(Node):
                     self.info('Hovering finished')
             
             elif not self.has_landed and self.has_hovered:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
+                
+                phi, target_r, target_v, phi_dot_x= self.embedding.targets(self.agents_r,self.phases)
+                #self.info(f"phi_dot_x: {phi_dot_x}")
+                # self.info(f"target_r: {target_r},{target_v}")
 
-                phi, target_r, target_v= self.embedding.targets(self.agents_r,self.phases)
-
+                
                 self.phi_cur.data = float(phi)
                 self.phase_pub.publish(self.phi_cur)
                 # if self.n_agents > 1:
                 #     self.phases[1] = phi
                 # else:
                 self.phases = phi
-                accels = self.kx*(target_r - self.agents_r) + self.kv*(target_v - self.agents_v)
+                #self.info(f"agents_r: {target_r}, {self.agents_r}, agents_v: {target_v}, {self.agents_v}")
+                #accels = self.kx*(target_r - self.agents_r) + self.kv*(target_v - self.agents_v)
                 #accels = (target_v - self.agents_v)/self.timer_period
                 #accels = np.clip(accels, -1, 1)
                 # agents_v = self.agents_v + accels*self.timer_period
-                # self.agents_r = self.agents_r + agents_v*self.timer_period + 0.5*accels*self.timer_period**2
-                self.agents_v = target_v
-        
-                #Wr_r,quat = self.generate_reference(target_v,accels,self.timer_period)
-                #Wr_r = np.clip(Wr_r, -10, 10)
-                self.next_point_full_state(target_r,target_v,accels,np.zeros(3),self.quat)
+                #self.info(f"agents_r: {self.agents_r}, agents_v*dt: {self.agents_v*self.timer_period }, accel*dt^2: {0.5*accels*self.timer_period**2}")
+                # self.agents_r = self.agents_r + self.agents_v*self.timer_period + 0.5*accels*self.timer_period**2
+                # self.agents_v = agents_v               
+                
+                #self.target_a = np.clip(self.target_a, -1, 1)
+                # self.target_r[:2] = np.clip(self.target_r[:,2], -1.5, 1.5)
+                # self.target_r[2] = np.clip(self.target_r[2], 0.2, 1.5)
+                #f_T_r, roll, pitch, yawrate = self.generate_reference(self.target_a)
+                #Wr_r = np.clip(np.rad2deg(Wr_r), -5, 5)
+                self.next_point(target_r)
+                #self.next_point_full_state(target_r,target_v,self.target_a,np.zeros(3),self.quat)
                 #self.next_point_attitude_thrust(pitch, roll,yawrate, f_T_r)
                 #self.landing()
                 
@@ -230,7 +248,7 @@ class Circle_distortion(Node):
         self.phases = msg.data
 
     def takeoff(self):
-        self.next_point_full_state(self.r_takeoff[:,self.i_takeoff],self.r_dot_takeoff[:,self.i_takeoff])
+        self.next_point(self.r_takeoff[:,self.i_takeoff])
         #self.info(f"Publishing to {msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}")
         if self.i_takeoff < len(self.t_takeoff)-1:
             self.i_takeoff += 1
@@ -266,15 +284,15 @@ class Circle_distortion(Node):
 
     def hover(self):
 
-        msg = FullState()
-        msg.pose.position.x = self.r*np.cos(self.initial_phase)
-        msg.pose.position.y = self.r*np.sin(self.initial_phase)
-        msg.pose.position.z = self.hover_height
-        self.full_state_pub.publish(msg)
+        msg = Pose()
+        msg.position.x = self.r*np.cos(self.initial_phase)
+        msg.position.y = self.r*np.sin(self.initial_phase)
+        msg.position.z = self.hover_height
+        self.position_pub.publish(msg)
 
 
     def landing(self):
-        self.next_point_full_state(self.r_landing[:,self.i_landing],self.r_dot_landing[:,self.i_landing])
+        self.next_point(self.r_landing[:,self.i_landing])
 
     def reboot(self):
         req = Empty.Request()
@@ -323,11 +341,41 @@ class Circle_distortion(Node):
 
     def next_point_attitude_thrust(self,pitch, roll,yawrate, f_T_r):
         msg = Twist()
-        msg.angular.x = np.rad2deg(float(pitch))
-        msg.angular.y = np.rad2deg(float(roll))
-        msg.angular.z = np.rad2deg(float(yawrate))
+        msg.angular.x = float(pitch)
+        msg.angular.y = float(roll)
+        msg.angular.z = float(yawrate)
         msg.linear.z = float(f_T_r)
         self.attitude_thrust_pub.publish(msg)
+
+    def generate_reference(self, va_r_dot=np.zeros(3)):
+
+        fa_r = self.mb*va_r_dot +self.mb*self.g*self.I3 #+ Ca_r@D@Ca_r.T@va_r
+        f_T_r = self.I3.T@self.Ca_r.T@fa_r
+        if np.linalg.norm(fa_r) != 0:
+            r3 = fa_r.reshape(3,1)/np.linalg.norm(fa_r)
+        else:
+            r3 = np.zeros((3,1))
+
+        aux = R3_so3(r3)@self.ca_1
+        if np.linalg.norm(aux) != 0:
+            r2 = aux.reshape(3,1)/np.linalg.norm(aux)
+        else:
+            r2 = np.zeros((3,1))
+
+        r1 = (R3_so3(r2)@r3).reshape(3,1);
+        Ca_r_new = np.hstack((r1, r2, r3))
+        if np.linalg.norm(r3) != 0:
+            Wr_r = so3_R3(np.linalg.inv(self.Ca_r)@Ca_r_new)/self.timer_period
+        else:
+            Wr_r = np.zeros((3,1))
+        self.Ca_r = Ca_r_new
+
+        angles = R.from_matrix(Ca_r_new).as_euler('zyx', degrees=True)
+        #quat = R.from_matrix(Ca_r_new).as_quat()
+        roll = angles[2]
+        pitch = angles[1]
+        Wr_r = self.Ca_b.T@self.Ca_r@Wr_r
+        return f_T_r, roll, pitch, np.rad2deg(Wr_r[2])
 
  
 def main():

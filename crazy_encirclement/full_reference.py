@@ -23,23 +23,26 @@ class FullReference(Node):
         self.timer_period = 0.002
 
         self.create_subscription(FullState,'/'+ self.robot +'/full_state', self.full_state_callback, 10)
+        self.create_subscription(Twist,'/'+ self.robot +'/vel_legacy', self.attitude_thrust_callback, 10)
         self.full_state_pub = self.create_publisher(FullState,'/'+ self.robot + '/cmd_full_state', 10)
-        self.attitude_thrust_pub = self.create_publisher(Twist,'/'+ self.robot + '/cmd_vel_legacy', 10)
+        self.attitude_thrust_pub = self.create_publisher(Twist,'/'+ self.robot + '/cmd_vel_legacy', 100)
         self.target_r = None
         self.target_v = None
         self.target_a = None
+        self.attitude_thrust_msg = None
 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
     def timer_callback(self):
-        if self.target_a is not None:
-            self.target_a = np.clip(self.target_a, -1, 1)
+        if self.attitude_thrust_msg is not None:
+            #self.target_a = np.clip(self.target_a, -1, 1)
             # self.target_r[:2] = np.clip(self.target_r[:,2], -1.5, 1.5)
             # self.target_r[2] = np.clip(self.target_r[2], 0.2, 1.5)
-            f_T_r, roll, pitch, yawrate = self.generate_reference()
             #Wr_r = np.clip(np.rad2deg(Wr_r), -5, 5)
-            self.next_point_attitude_thrust(pitch, roll,np.rad2deg(yawrate), f_T_r)
-            #self.next_point_full_state(self.target_r,self.target_v,self.target_a,Wr_r,quat)
+            self.attitude_thrust_pub.publish(self.attitude_thrust_msg)
+        # elif self.target_r is not None:
+
+        #     self.next_point_full_state(self.target_r,self.target_v,self.target_a)
 
     def generate_reference(self):
 
@@ -77,6 +80,9 @@ class FullReference(Node):
         self.target_a = np.array([msg.acc.x, msg.acc.y, msg.acc.z])
         self.Ca_b = R.from_quat([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]).as_matrix()
     
+    def attitude_thrust_callback(self, msg):
+        #self.info(f"attitude_thrust_callback {msg}")
+        self.attitude_thrust_msg = msg
     def clip_value(self,value, min_val=-32768, max_val=32767):
         return max(min_val, min(value, max_val))
     
