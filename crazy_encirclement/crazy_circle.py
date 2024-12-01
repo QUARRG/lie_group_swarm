@@ -20,9 +20,9 @@ from crazy_encirclement.set_parameter_client import SetParameterClient
 class Circle(Node):
     def __init__(self):
         super().__init__('circle_trajectory_node')
-        self.declare_parameter('robot_prefix', 'C120')  
+        self.declare_parameter('robot', 'C04')  
 
-        self.robot = self.get_parameter('robot_prefix').value
+        self.robot = self.get_parameter('robot').value
         #clients
         self.notify_client = self.create_client(NotifySetpointsStop, '/'+self.robot+'/notify_setpoints_stop')  
         self.reboot_client = self.create_client(Empty,  '/'+self.robot+'/reboot')
@@ -38,7 +38,7 @@ class Circle(Node):
         )
         self.subscription = self.create_subscription(
             Bool,
-            'landing',
+            '/landing',
             self._landing_callback,
             10)
         self.publisher_pose = self.create_publisher(Pose, self.robot + '/cmd_position', 10)
@@ -72,7 +72,7 @@ class Circle(Node):
         self.r = np.sqrt(x**2 + y**2)
         phase = np.arctan2(y,x)
         #center = np.array([np.sign(x)*(np.abs(x)-self.r),np.sign(y)*(np.abs(y)-self.r)])
-        self.hover_height = 0.3
+        self.hover_height = 0.25
        
         
         #generating the cicle trajectory
@@ -104,11 +104,11 @@ class Circle(Node):
         self.get_logger().info('Circle node has been started.')
         
         for i in range(7):            
-            _, _, _,_, Ca_r_new = generate_reference(self.va_r_dot[:,0],self.Ca_r[:,:,0],self.va_r[:,0],self.dt)
+            _, _, _,_, Ca_r_new = generate_reference(self.va_r[:,0],self.va_r_dot[:,0],self.Ca_r[:,:,0],np.eye(3),self.dt)
             self.Ca_r[:,:,0] = Ca_r_new
         self.get_logger().info(f"Initial pose: {self.initial_pose.position.x}, {self.initial_pose.position.y}, {self.initial_pose.position.z}")
-        #input("Press Enter to takeoff")
-        time.sleep(3.0)
+        input("Press Enter to takeoff")
+        #time.sleep(3.0)
         
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
@@ -150,7 +150,7 @@ class Circle(Node):
         try:
             if self.land_flag or (self.i > len(self.t)-2):
                 if self.final_pose is None:
-                    self.final_pose = self.pose
+                    self.final_pose = self.pose.copy()
                     self.r_landing[0,:] += self.final_pose.position.x
                     self.r_landing[1,:] += self.final_pose.position.y
 
@@ -176,7 +176,7 @@ class Circle(Node):
                     self.get_logger().info('Hovering finished')
 
             elif not self.has_landed:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
-                Wr_r_new, _, _, quat_new, Ca_r_new = generate_reference(self.va_r_dot[:,self.i],self.Ca_r[:,:,self.i],self.va_r[:,self.i],self.dt)
+                Wr_r_new, _, _, quat_new, Ca_r_new = generate_reference(self.va_r[:,self.i],self.va_r_dot[:,self.i],self.Ca_r[:,:,self.i],np.eye(3),self.dt)
                 self.Ca_r[:,:,self.i+1] = Ca_r_new
                 self.next_point(self.ra_r[:,self.i],self.va_r[:,self.i],self.va_r_dot[:,self.i],Wr_r_new,quat_new,self.Ca_r[:,:,self.i])
                 
