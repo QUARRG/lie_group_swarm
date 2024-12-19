@@ -17,8 +17,8 @@ class Embedding():
         self.initial_phase = np.zeros(self.n)
         self.Rot_des = np.zeros((3,3,self.n))
         self.Rot_act = np.zeros((3,3,self.n))
-        self.scale = self.phi_dot #scale the distortion around the x axis
-
+        self.scale = 0.35 #scale the distortion around the x axis
+        self.hover_height = 0.7
         self.count = 0
         for i in range(self.n):
             self.Rot_des[:,:,i] = np.eye(3)
@@ -57,10 +57,10 @@ class Embedding():
         for i in range(self.n):
             # Circle position
             # pos = np.array([agent_r[0, i] - self.phi_dot*np.cos(phi_prev[i])*np.sin(phi_prev[i]), agent_r[1, i] - self.r*np.cos(phi_prev[i])**2, agent_r[2, i]-0.6])
-            pos = np.array([agent_r[0, i] , agent_r[1, i] , agent_r[2, i]-0.6])
+            pos = np.array([agent_r[0, i] , agent_r[1, i] , agent_r[2, i]-self.hover_height])
 
             pos_rot = self.Rot_des[:,:,i].T@pos.T
-            phi, _, phi_raw = self.cart2pol(pos)
+            phi, _, _ = self.cart2pol(pos)
             # phi_dot_x = self.calc_wx(phi)#*(phi-self.phi_des[i])
             # phi_dot_y = self.calc_wy(phi)
             # v_d_hat_x = np.array([-phi_dot_x, -phi_dot_y, 0])
@@ -104,22 +104,21 @@ class Embedding():
             Rot_z = expm(R3_so3(v_d_hat_z.reshape(-1,1))*self.dt)
             pos_d_hat = np.array([x, y, 0])
             pos_d_hat = Rot_z@pos_d_hat
-            phi_d, _, _= self.cart2pol(pos_d_hat)
+            phi_d, _, phi_d_raw= self.cart2pol(pos_d_hat)
 
-            # phi_dot_x = self.calc_wx(phi_d_raw)#*(phi_d-self.phi_des[i])
-            # phi_dot_y = self.calc_wy(phi_d_raw) #phi_i-phi_prev[i]*
-            # v_d_hat_x_y = np.array([phi_dot_x, phi_dot_y, 0])
-            #self.Rot_des[:,:,i] = expm(R3_so3(v_d_hat_x_y.reshape(-1,1)))
+            phi_dot_x = self.calc_wx(phi_d_raw)#*(phi_d-self.phi_des[i])
+            phi_dot_y = self.calc_wy(phi_d_raw) #phi_i-phi_prev[i]*
+            v_d_hat_x_y = np.array([phi_dot_x, phi_dot_y, 0])
+            self.Rot_des[:,:,i] = expm(R3_so3(v_d_hat_x_y.reshape(-1,1)))
      
 
-            # pos_d = self.Rot_des[:,:,i]@pos_d_hat
-            pos_d = pos_d_hat
+            pos_d = self.Rot_des[:,:,i]@pos_d_hat
             # if i == 1 and not self.pass_ref[i]:
 
             #pos_d = (self.Rot_des[:,:,0].T@pos_d)
             target_r[0, i] = pos_d[0] #+ self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
             target_r[1, i] = pos_d[1] #+ self.r*np.cos(phi_i)**2
-            target_r[2, i] = pos_d[2] + 0.6
+            target_r[2, i] = pos_d[2] + self.hover_height
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
@@ -144,11 +143,11 @@ class Embedding():
     
 
     def calc_wx(self,phi):
-        return self.scale*(np.sin(phi)*np.cos(phi)+np.sqrt(np.abs(phi))/(2*np.pi))
+        return self.scale*(np.sin(phi)*np.cos(phi)-np.sin(phi)**3)
         #return self.scale*np.cos(phi)*np.sin(phi)
     
     def calc_wy(self,phi):
-        return 0*self.scale*np.exp(-np.abs(phi))*np.cos(phi)
+        return self.scale*np.sin(-phi)*np.cos(phi)**2
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k,i):
 
@@ -165,7 +164,7 @@ class Embedding():
         phi_dot_des = self.phi_dot +  np.clip((5/self.dt)*(1/(w_diff_ij.real) + 1/(w_diff_ki.real)),-0.5,0.5) # 0.1*(w_neg.real + w_pos.real) #+ np.clip(-0.5/(w_diff_ij.real) + 0.5/(w_diff_ki.real),-0.5,0.5)
 
 
-        return phi_dot_des #(3 * phi_dot_des + k * (phi_ki - phi_ij)) / 3
+        return phi_dot_des
 
 
     def cart2pol(self,pos_rot):

@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy,QoSDurabilityPolicy
 from motion_capture_tracking_interfaces.msg import NamedPoseArray
-from crazyflie_interfaces.msg import FullState, StringArray
+from crazyflie_interfaces.msg import FullState, StringArray, Position
 from std_msgs.msg import Bool
 from rclpy.duration import Duration
 from crazy_encirclement.embedding_SO3_ros import Embedding
@@ -23,7 +23,7 @@ class Circle_distortion(Node):
         self.info('Circle distortion node has been started.')
         self.declare_parameter('r', '1')
         self.declare_parameter('robot', 'C20')
-        self.declare_parameter('number_of_agents', '1')
+        self.declare_parameter('number_of_agents', '3')
         self.declare_parameter('phi_dot', '0.5')
         self.declare_parameter('tactic', 'circle')    
         self.declare_parameter('initial_pase', '0')
@@ -31,9 +31,9 @@ class Circle_distortion(Node):
         self.robot = self.get_parameter('robot').value
         self.n_agents  = int(self.get_parameter('number_of_agents').value)
         self.r  = float(self.get_parameter('r').value)
-        self.k_phi  = 0#float(self.get_parameter('k_phi').value)
+        self.k_phi  = 5#float(self.get_parameter('k_phi').value)
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
-        self.initial_phase = float(self.get_parameter('initial_pase').value)
+        self.initial_phase = 0
         self.tactic  = self.get_parameter('tactic').value
         self.reboot_client = self.create_client(Empty,  '/'+'all'+'/reboot')
 
@@ -60,7 +60,7 @@ class Circle_distortion(Node):
         self.Ca_r = np.eye(3)
         self.quat = [0,0,0,1]
         self.agents_v = np.zeros(3)
-        self.hover_height = 0.6
+        self.hover_height = 0.7
         self.target_a = np.zeros(3)
         #change back #############################################################
         # self.agents_r[0] = self.r*np.cos(self.initial_phase)
@@ -74,6 +74,8 @@ class Circle_distortion(Node):
         else:
             self.phases = 0
         self.phi_cur = Float32()
+        self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 10)
+
         
         self.create_subscription(
             Bool,
@@ -103,29 +105,30 @@ class Circle_distortion(Node):
             # lifespan=rclpy.duration.Duration(seconds=1.0)    # Message lifespan of 1 second
         )
         self.create_subscription(
-            Odometry, "/"+self.robot+"/odom",
-            self._poses_changed, qos_profile
+            PoseStamped, "/"+self.robot+"/pose",
+            self._poses_changed, 10
         )
-        
+                
+        while (not self.has_initial_pose):
+            rclpy.spin_once(self, timeout_sec=0.1)
 
         if self.n_agents > 1:
+            self.phi_cur.data = self.initial_phase
+            self.phase_pub.publish(self.phi_cur)
             self.create_subscription(
                 Float32MultiArray,
                 '/'+self.robot+'/phases',
                 self._phase_callback,
                 10)
             while not self.phases:
+                self.phase_pub.publish(self.phi_cur)
                 rclpy.spin_once(self, timeout_sec=0.1)
-                
-        while (not self.has_initial_pose):
-            rclpy.spin_once(self, timeout_sec=0.1)
 
         self.info(f"Initial pose: {self.initial_pose}")
         self.info("First pose received. Moving on...")
 
 
-        self.position_pub = self.create_publisher(Pose,'/'+ self.robot + '/cmd_position', 10)
-        self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 10)
+        self.position_pub = self.create_publisher(Position,'/'+ self.robot + '/cmd_position', 10)
         self.full_state_pub = self.create_publisher(FullState,'/'+ self.robot + '/full_state', 10)
         self.attitude_thrust_pub = self.create_publisher(Twist,'/'+ self.robot + '/vel_legacy', 100)
 
@@ -134,7 +137,7 @@ class Circle_distortion(Node):
         self.kx = 5
         self.kv = 2.5*np.sqrt(2)
 
-        self.timer_period = 0.01
+        self.timer_period = 0.1
         self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.hover_height,self.timer_period,4)
         # while (not self.has_initial_pose):
         #     rclpy.spin_once(self, timeout_sec=0.1)
@@ -218,31 +221,30 @@ class Circle_distortion(Node):
            poses topic to send through the external position
            to the crazyflie 
         """
-        self.quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        # self.quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
 
         if not self.has_initial_pose:      
-            self.initial_pose[0] = msg.pose.pose.position.x
-            self.initial_pose[1] = msg.pose.pose.position.y
-            self.initial_pose[2] = msg.pose.pose.position.z      
+            self.initial_pose[0] = msg.pose.position.x
+            self.initial_pose[1] = msg.pose.position.y
+            self.initial_pose[2] = msg.pose.position.z   
+            self.initial_phase = np.mod(np.arctan2(self.initial_pose[1], self.initial_pose[0]),2*np.pi)   
             self.has_initial_pose = True    
             
         elif not self.land_flag :
 
-            self.agents_r[0] = msg.pose.pose.position.x
-            self.agents_r[1] = msg.pose.pose.position.y
-            self.agents_r[2] = msg.pose.pose.position.z
-            self.agents_v[0] = msg.twist.twist.linear.x
-            self.agents_v[1] = msg.twist.twist.linear.y
-            self.agents_v[2] = msg.twist.twist.linear.z
+            self.agents_r[0] = msg.pose.position.x
+            self.agents_r[1] = msg.pose.position.y
+            self.agents_r[2] = msg.pose.position.z
+
         elif self.has_final == False and self.land_flag == True:
             self.has_final = True
             self.final_pose = np.zeros(3)
             self.info("Landing...")
 
 
-            self.final_pose[0] = msg.pose.pose.position.x
-            self.final_pose[1] = msg.pose.pose.position.y
-            self.final_pose[2] = msg.pose.pose.position.z
+            self.final_pose[0] = msg.pose.position.x
+            self.final_pose[1] = msg.pose.position.y
+            self.final_pose[2] = msg.pose.position.z
             self.r_landing[0,:] += self.final_pose[0]*np.ones(len(self.t_landing))
             self.r_landing[1,:] += self.final_pose[1]*np.ones(len(self.t_landing))
 
@@ -250,6 +252,7 @@ class Circle_distortion(Node):
         
 
     def _phase_callback(self, msg):
+        self.get_logger().info(f"Phase received: {msg.data}")
         self.phases = msg.data
 
     def takeoff(self):
@@ -289,10 +292,10 @@ class Circle_distortion(Node):
 
     def hover(self):
 
-        msg = Pose()
-        msg.position.x = self.r*np.cos(self.initial_phase)
-        msg.position.y = self.r*np.sin(self.initial_phase)
-        msg.position.z = self.hover_height
+        msg = Position()
+        msg.x = self.r*np.cos(self.initial_phase)
+        msg.y = self.r*np.sin(self.initial_phase)
+        msg.z = self.hover_height
         self.position_pub.publish(msg)
 
 
@@ -305,26 +308,15 @@ class Circle_distortion(Node):
         time.sleep(2.0)
 
     def next_point(self,r,quat_new=np.array([0,0,0,1])):
-        msg = Pose()
-        msg.position.x = float(r[0])
-        msg.position.y = float(r[1])
-        msg.position.z = float(r[2])
-        msg.orientation.x = float(quat_new[0])
-        msg.orientation.y = float(quat_new[1])
-        msg.orientation.z = float(quat_new[2])
-        msg.orientation.w = float(quat_new[3])   
+        msg = Position()
+        msg.x = float(r[0])
+        msg.y = float(r[1])
+        msg.z = float(r[2])
+
         self.position_pub.publish(msg)
 
-    def clip_value(self,value, min_val=-32768, max_val=32767):
-        return max(min_val, min(value, max_val))
     def next_point_full_state(self,r,v,v_dot=np.zeros(3),Wr_r_new=np.zeros(3),quat_new=np.array([0,0,0,1])):
-        # self.info(f"debug before {r}, {v}, {v_dot}, {Wr_r_new}, {quat_new}")
-        # r = [self.clip_value(i) for i in r]
-        # v = [self.clip_value(i) for i in v]
-        # v_dot = [self.clip_value(i) for i in v_dot]
-        # Wr_r_new = [self.clip_value(i) for i in Wr_r_new]
 
-        #self.info(f"debug after {r}, {v}, {v_dot}, {Wr_r_new}, {quat_new}")
         msg = FullState()
         msg.pose.position.x = float(r[0])
         msg.pose.position.y = float(r[1])
@@ -352,35 +344,7 @@ class Circle_distortion(Node):
         msg.linear.z = float(f_T_r)
         self.attitude_thrust_pub.publish(msg)
 
-    def generate_reference(self, va_r_dot=np.zeros(3)):
 
-        fa_r = self.mb*va_r_dot +self.mb*self.g*self.I3 #+ Ca_r@D@Ca_r.T@va_r
-        f_T_r = self.I3.T@self.Ca_r.T@fa_r
-        if np.linalg.norm(fa_r) != 0:
-            r3 = fa_r.reshape(3,1)/np.linalg.norm(fa_r)
-        else:
-            r3 = np.zeros((3,1))
-
-        aux = R3_so3(r3)@self.ca_1
-        if np.linalg.norm(aux) != 0:
-            r2 = aux.reshape(3,1)/np.linalg.norm(aux)
-        else:
-            r2 = np.zeros((3,1))
-
-        r1 = (R3_so3(r2)@r3).reshape(3,1);
-        Ca_r_new = np.hstack((r1, r2, r3))
-        if np.linalg.norm(r3) != 0:
-            Wr_r = so3_R3(np.linalg.inv(self.Ca_r)@Ca_r_new)/self.timer_period
-        else:
-            Wr_r = np.zeros((3,1))
-        self.Ca_r = Ca_r_new
-
-        angles = R.from_matrix(Ca_r_new).as_euler('zyx', degrees=True)
-        #quat = R.from_matrix(Ca_r_new).as_quat()
-        roll = angles[2]
-        pitch = angles[1]
-        Wr_r = self.Ca_b.T@self.Ca_r@Wr_r
-        return f_T_r, roll, pitch, np.rad2deg(Wr_r[2])
 
  
 def main():

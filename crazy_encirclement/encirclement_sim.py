@@ -12,14 +12,14 @@ import pandas as pd
 import os
 import pickle
 
-N = 3000
+N = 600
 r = 1
 k_phi = 10
-kx = 20
-kv = 6.5*np.sqrt(2)
+kx = 2
+kv = 2.5*np.sqrt(2)
 n_agents = 3
 phi_dot = 0.5#np.deg2rad(35)
-dt = 0.01
+dt = 0.1
 save = False
 
 mb = 0.04
@@ -56,8 +56,8 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(40)),r*np.sin(np.deg2rad(40)),0.6]).T
-agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(20)),r*np.sin(np.deg2rad(20)),0.6]).T
+agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)),0.6]).T
+agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
 agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(10)),r*np.sin(np.deg2rad(10)) ,0.6]).T
 # agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)),0.6]).T
 # agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T

@@ -108,13 +108,13 @@ def parse_yaml(context):
                 parameters=[{'robot_prefix': robot}]
             ))
     
-    # Nodes.append(Node(
-    #     package='crazy_encirclement',
-    #     executable='agents_order',
-    #     name='agents_order',
-    #     output='screen',
-    #     parameters= [{'robot_data': robots_list}]
-    # ))
+    Nodes.append(Node(
+        package='crazy_encirclement',
+        executable='agents_order',
+        name='agents_order',
+        output='screen',
+        parameters= [{'robot_data': robots_list}]
+    ))
     return Nodes
 
 def generate_launch_description():
@@ -141,7 +141,7 @@ def generate_launch_description():
                               default_value=default_motion_capture_yaml_path),
         DeclareLaunchArgument('rviz_config_file', 
                               default_value=default_rviz_config_path),
-        DeclareLaunchArgument('backend', default_value='cflib'),
+        DeclareLaunchArgument('backend', default_value='cpp'),
         DeclareLaunchArgument('debug', default_value='False'),
         DeclareLaunchArgument('rviz', default_value='False'),
         DeclareLaunchArgument('mocap', default_value='True'),

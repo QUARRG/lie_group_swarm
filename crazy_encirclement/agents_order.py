@@ -5,7 +5,6 @@ from motion_capture_tracking_interfaces.msg import NamedPoseArray
 from crazyflie_interfaces.msg import StringArray
 from std_msgs.msg import Bool
 from rclpy.duration import Duration
-from crazy_encirclement.crazy_encirclement.embedding_cf import Embedding
 from std_srvs.srv import Empty
 from std_msgs.msg import Float32MultiArray, Float32
 
@@ -32,7 +31,8 @@ class AgentsOrder(Node):
 
         self.order = StringArray()
         self.has_order = False#np.zeros((3,self.n_agents))
-        self.initial_phases = {}        
+        self.initial_phases = {}    
+        self.positions = np.zeros((3,self.n_agents))    
 
         qos_profile = QoSProfile(reliability =QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -51,15 +51,35 @@ class AgentsOrder(Node):
         for robot in self.order.data:
             self.phase_pub.append(self.create_publisher(Float32MultiArray,'/'+ robot + '/phases', 1))
 
-        for robot in self.order.data:
-            self.create_subscription(Float32, '/'+ robot + '/phase', partial(self._phase_callback,robot), 1)
+        # for robot in self.order.data:
+        #     self.create_subscription(Float32, '/'+ robot + '/phase', partial(self._phase_callback,robot), 1)
         
-        self.timer_period = 0.1
+        self.timer_period = 0.01
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
     def timer_callback(self):
         try:
-            self.order_publisher.publish(self.order)          
+            self.order_publisher.publish(self.order)   
+            order = self.order.data 
+            for robot in order:
+                phases_this_robot = Float32MultiArray()
+                i = order.index(robot)
+                if self.n_agents > 2:
+                    if i == 0:
+                        phases_this_robot.data = [self.phases[-1],self.phases[i],self.phases[i+1]]
+                    elif i == (len(order)-1):
+                        phases_this_robot.data = [self.phases[i-1],self.phases[i],self.phases[0]]
+                    else:
+                        phases_this_robot.data = [self.phases[i-1],self.phases[i],self.phases[i+1]]
+                else: 
+                    #TO DO: 
+                    # check what to do with 2 agents ###################
+                    if i == 1:
+                        phases_this_robot.data = [self.phases[i-1],self.phases[i],self.phases[i-1]]
+                    else:
+                        phases_this_robot.data = [self.phases[i+1],self.phases[i],self.phases[i+1]]
+                self.phase_pub[i].publish(phases_this_robot)
+                self.info(f"phases agent {i+1}: {phases_this_robot}")
 
         except KeyboardInterrupt:
             self.info('Exiting node...')
@@ -80,27 +100,37 @@ class AgentsOrder(Node):
                 if pose.name in self.robots:
                     self.initial_phases[str(pose.name)] = np.mod(np.arctan2(pose.pose.position.y, pose.pose.position.x),2*np.pi)
             
-            self.order.data = sorted(self.initial_phases, key=lambda x: self.initial_phases[x],reverse=True)
+            self.order.data = sorted(self.initial_phases, key=lambda x: self.initial_phases[x],reverse=False)
             self.get_logger().info(f'Order of agents: {self.order.data}')
             self.has_order = True         
             self.info(f'Order of agents: {self.order}')    
+        else:
+            for pose in msg.poses:
+                if pose.name in self.robots:
+                    i = self.order.data.index(pose.name)
+                    phi_i = np.mod(np.arctan2(pose.pose.position.y, pose.pose.position.x),2*np.pi)
+                    self.phases[i] = phi_i
 
-    def _phase_callback(self, msg, robot):
+
+    def _phase_callback(self, robot, msg):
         """
         Callback to the phase topic to send through the
            current phase of the agent
         """
+        self.get_logger().info(f'Phase of {robot}: {msg}')
+        self.get_logger().info(f'Order of agents: {self.order}')
+        order = self.order.data
         if self.has_order:
-            self.phases[self.order.index(robot)] = msg.data
+            self.phases[order.index(robot)] = msg.data
             phases_this_robot = Float32MultiArray()
-            for i in range(len(self.order)):
+            for i in range(len(order)):
 
-                if self.order[i] == robot:
-                    self.has_order = True
+                if order[i] == robot:
+                    # self.has_order = True
                     if self.n_agents > 2:
                         if i == 0:
                             phases_this_robot.data = [self.phases[-1],self.phases[i],self.phases[i+1]]
-                        elif i == len(self.order)-1:
+                        elif i == (len(order)-1):
                             phases_this_robot.data = [self.phases[i-1],self.phases[i],self.phases[0]]
                         else:
                             phases_this_robot.data = [self.phases[i-1],self.phases[i],self.phases[i+1]]
@@ -111,7 +141,7 @@ class AgentsOrder(Node):
                         else:
                             phases_this_robot.data = [self.phases[i+1],self.phases[i],self.phases[i+1]]
                     self.phase_pub[i].publish(phases_this_robot)
-                    #self.info(f"Order of agents: {self.order}")
+                    self.info(f"Order of agents: {phases_this_robot}")
 
 def main():
     rclpy.init()
