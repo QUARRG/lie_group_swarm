@@ -12,15 +12,15 @@ import pandas as pd
 import os
 import pickle
 
-N = 1000
+N = 200
 r = 1.2
-k_phi = 50
+k_phi = 15
 kx = 5
 kv = 6.5*np.sqrt(2)
 n_agents = 3
 phi_dot = 0.6#np.deg2rad(35)
 dt = 0.1
-save = False
+save = True
 
 mb = 0.04
 g = 9.81
@@ -56,9 +56,9 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
+agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)),0.6]).T
 agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
-agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)) ,0.6]).T
+agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(10)),r*np.sin(np.deg2rad(10)) ,0.6]).T
 # agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)),0.6]).T
 # agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
 # agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)) ,0.6]).T
@@ -178,20 +178,20 @@ else:
 for i in range(n_agents):
     plt.subplot(3,1,1)
     plt.title(f"Positions agent {i+1}")
-    plt.plot(t[0:-1],ra_r[0,i,0:-1])
-    plt.plot(t[0:-1],agents_r[0,i,0:-1],linestyle='dashed')
-    plt.legend(["Desired","Real"])
-    plt.ylabel("x (m)")
+    plt.plot(t[0:-1],ra_r[0,i,0:-1],color=colors[i])
+    plt.plot(t[0:-1],agents_r[0,i,0:-1],linestyle='dashed',color=colors[i])
+    plt.legend([f"Des Pos Agent {i+1}",f"Actual Pos Agent {i+1}"])
+    plt.ylabel("X axis (m)")
     plt.subplot(3,1,2)
-    plt.plot(t[0:-1],ra_r[1,i,0:-1])
-    plt.plot(t[0:-1],agents_r[1,i,0:-1],linestyle='dashed')
+    plt.plot(t[0:-1],ra_r[1,i,0:-1],color=colors[i])
+    plt.plot(t[0:-1],agents_r[1,i,0:-1],linestyle='dashed',color=colors[i])
     
-    plt.ylabel("y (m)")
+    plt.ylabel("Y axis (m)")
     plt.subplot(3,1,3)
-    plt.plot(t[0:-1],ra_r[2,i,0:-1])
-    plt.plot(t[0:-1],agents_r[2,i,0:-1],linestyle='dashed')
+    plt.plot(t[0:-1],ra_r[2,i,0:-1],color=colors[i])
+    plt.plot(t[0:-1],agents_r[2,i,0:-1],linestyle='dashed',color=colors[i])
 
-    plt.ylabel("z (m)")
+    plt.ylabel("Z axis (m)")
     plt.xlabel("Time (s)")
 
     if save:

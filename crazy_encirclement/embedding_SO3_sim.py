@@ -158,14 +158,14 @@ class Embedding():
         # R_ij = R_j.T@R_i
         R_ki = R_i.T@R_k
 
-        w_diff_ij = so3_R3(logm(R_ji.T))[2]
+        w_diff_ji = so3_R3(logm(R_ji.T))[2]
         w_diff_ki = so3_R3(logm(R_ki.T))[2]
         if w_diff_ij == 0:
             w_diff_ij = 0.00001
         if w_diff_ki == 0:
             w_diff_ki = 0.00001
 
-        phi_dot_des = self.phi_dot +  np.clip(k*(1/(w_diff_ij.real) + 1/(w_diff_ki.real)),-1.6,0.6) # 0.1*(w_neg.real + w_pos.real) #+ np.clip(-0.5/(w_diff_ij.real) + 0.5/(w_diff_ki.real),-0.5,0.5)
+        phi_dot_des = self.phi_dot +  np.clip(k*(1/(w_diff_ji.real) + 1/(w_diff_ki.real)),-1.6,0.6) # 0.1*(w_neg.real + w_pos.real) #+ np.clip(-0.5/(w_diff_ij.real) + 0.5/(w_diff_ki.real),-0.5,0.5)
 
 
         return phi_dot_des
