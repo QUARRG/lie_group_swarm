@@ -94,7 +94,7 @@ def parse_yaml(context):
         if crazyflies['robots'][robot]['enabled']:
             robots_list.append(robot)
             # Nodes.append(Node(
-            #     package='crazy_encirclement',
+            #     package='lie_group_swarm',
             #     executable='encirclement_node',
             #     name=robot+'_encirclement_node',
             #     output='screen',
@@ -109,7 +109,7 @@ def parse_yaml(context):
             ))
     
     Nodes.append(Node(
-        package='crazy_encirclement',
+        package='lie_group_swarm',
         executable='agents_order',
         name='agents_order',
         output='screen',
@@ -186,5 +186,5 @@ def generate_launch_description():
 
     # Return the LaunchDescription with all the nodes
     return LaunchDescription(nodes)
-#ros2 launch crazy_encirclement <launch_file>.launch.py --ros-args -p robot:=C05 --remap /old_topic:=/new_topic
-#ros2 run crazy_encirclement encirclement --ros-args -p robot:='C05' --remap /encirclement:=/C05/encirclement
+#ros2 launch lie_group_swarm <launch_file>.launch.py --ros-args -p robot:=C05 --remap /old_topic:=/new_topic
+#ros2 run lie_group_swarm encirclement --ros-args -p robot:='C05' --remap /encirclement:=/C05/encirclement

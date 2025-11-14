@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 import os
 from glob import glob
-package_name = 'crazy_encirclement'
+package_name = 'lie_group_swarm'
 
 setup(
     name=package_name,
@@ -22,11 +22,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'encirclement = crazy_encirclement.encirclement_node:main',
-            'crazy_circle = crazy_encirclement.crazy_circle:main',
-            'agents_order = crazy_encirclement.agents_order:main',
-            'circle_distortion = crazy_encirclement.circle_distortion:main',
-            'full_reference = crazy_encirclement.full_reference:main',
+            'encirclement = lie_group_swarm.encirclement_node:main',
+            'crazy_circle = lie_group_swarm.crazy_circle:main',
+            'agents_order = lie_group_swarm.agents_order:main',
+            'circle_distortion = lie_group_swarm.circle_distortion:main',
+            'full_reference = lie_group_swarm.full_reference:main',
         ],
     },
 )

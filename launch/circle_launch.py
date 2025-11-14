@@ -83,7 +83,7 @@ def parse_yaml(context):
         if crazyflies['robots'][robot]['enabled']:
             robots_list.append(robot)
             # Nodes.append(Node(
-            #     package='crazy_encirclement',
+            #     package='lie_group_swarm',
             #     executable='crazy_circle',
             #     name=robot+'_crazy_circle',
             #     output='screen',
@@ -97,7 +97,7 @@ def parse_yaml(context):
                 parameters=[{'robot_prefix': robot}]
             ))
     # Nodes.append(Node(
-    #     package='crazy_encirclement',
+    #     package='lie_group_swarm',
     #     executable='agents_order',
     #     name='agents_order',
     #     output='screen',
