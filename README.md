@@ -11,7 +11,7 @@ To run the simulation:
 python3 crazy_encirclement/encirclement_sim.py
 ```
 # Crazyflies workspace 
-## Clone the [crazyswarm2](https://github.com/dimitriasilveria/crazyswarm2)  and the [motion_capture_tracking](https://github.com/IMRCLab/motion_capture_tracking/tree/73da55a005c3c8ccd26e108ba627dbcd438f30f9) repositories
+## Clone the [crazyswarm2](https://github.com/dimitriasilveria/crazyswarm2), the [motion_capture_tracking](https://github.com/IMRCLab/motion_capture_tracking/tree/73da55a005c3c8ccd26e108ba627dbcd438f30f9), and the [controller_pkg](https://github.com/dimitriasilveria/crazy_tests/tree/52a623f61e6278c940ca5ce208f3ce6c08bce69c) repositories
 ## Then, select the crazyflies you intend to fly in the configuration file:
 1. Go to the file [crazyflie.yaml](crazyswarm2/crazyflie/config/crazyflies.yaml) 
 2. Under the drone's name, set the flag "enable"
