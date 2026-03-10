@@ -1,0 +1,278 @@
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy,QoSDurabilityPolicy
+from motion_capture_tracking_interfaces.msg import NamedPoseArray
+from crazyflie_interfaces.msg import FullState, StringArray, Position
+from std_msgs.msg import Bool
+from rclpy.duration import Duration
+from crazy_encirclement.embedding_SO3_ros import Embedding
+from std_srvs.srv import Empty
+from nav_msgs.msg import Odometry
+from std_msgs.msg import Float32MultiArray, Float32
+from geometry_msgs.msg import Pose, Twist, PoseStamped
+from crazy_encirclement.utils2 import  trajectory, R3_so3, so3_R3
+from scipy.linalg import expm, logm
+import time
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+class Circle_distortion(Node):
+    def __init__(self):
+        """
+            Node that sends the crazyflie to a desired position
+            The desired position comes from the distortion of a circle
+        """
+        super().__init__('circle_distortion')
+        self.info = self.get_logger().info
+        self.info('Circle distortion node has been started.')
+        self.declare_parameter('r', '1.')
+        self.declare_parameter('robot', 'C20')
+        self.declare_parameter('number_of_agents', '3')
+        self.declare_parameter('phi_dot', '0.8')
+  
+        self.robot = self.get_parameter('robot').value
+        self.n_agents  = int(self.get_parameter('number_of_agents').value)
+        self.r  = float(self.get_parameter('r').value)
+        self.k_phi  = 8#float(self.get_parameter('k_phi').value)
+        self.phi_dot  = float(self.get_parameter('phi_dot').value)
+        self.initial_phase = 0
+        self.reboot_client = self.create_client(Empty, self.robot + '/reboot')
+
+        self.has_initial_pose = False
+        self.has_final = False
+        self.land_flag = False
+        self.has_order = False
+        self.has_phase_follower = False
+        self.has_phase_leader = False
+
+        self.final_pose = np.zeros(3)
+        self.current_pos = np.zeros(3)
+        self.initial_pose = np.zeros(3)
+        self.hover_height = 0.9
+        self.leader = None
+        self.follower = None
+        self.Rot_des = np.eye(3)
+        self.target_r = np.zeros(3)
+        self.timer_period = 0.1
+
+        self.i_landing = 0
+        self.i_takeoff = 0
+
+        self.phases = np.zeros(self.n_agents)
+
+        self.phi_cur = Float32()
+        self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 1)
+
+        self.state = 0
+        #0-take-off, 1-hover, 2-encirclement, 3-landing
+
+        self.create_subscription(
+            Bool,
+            '/landing',
+            self._landing_callback,
+            10)
+        self.create_subscription(
+            Bool,
+            '/encircle',
+            self._encircle_callback,
+            10)
+        
+        #pine tree
+        h = 0.8
+        l = 0.44
+        self.points = [(-0.45-h,-l/2,self.hover_height),(-0.45,-l/2,self.hover_height),(-0.45,-0.9,self.hover_height),
+                       (0.5,-0.9/2,self.hover_height),(0.5,-0.9,self.hover_height),
+                       (1.07,0,self.hover_height),(0.5,0.9,self.hover_height),(0.5,0.9/2,self.hover_height),
+                       (-0.45,0.9,self.hover_height), (-0.45,l/2,self.hover_height),
+                       (-0.45-h,l/2,self.hover_height),(-0.45-h,-l/2,self.hover_height)]
+        # Generate intermediate points for the pine tree trajectory
+        self.interpolated_points = []
+        self.time_per_segment = 5.0  # Time in seconds for each segment
+        self.points_per_segment = int(self.time_per_segment / self.timer_period)
+
+        for i in range(len(self.points) - 1):
+            p0 = self.points[i]
+            p1 = self.points[i + 1]
+            interpolated_segment = self.interpolate(p0, p1, self.points_per_segment)
+            self.interpolated_points.extend(interpolated_segment)
+        
+#
+        self.total_trajectory_length = len(self.interpolated_points)
+
+
+        self.current_point_index = 0
+
+        qos_profile = QoSProfile(reliability =QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1,
+            deadline=Duration(seconds=0, nanoseconds=0))
+
+        self.create_subscription(
+            NamedPoseArray, "/poses",
+            self._poses_changed, qos_profile
+        )
+
+
+
+        while (not self.has_initial_pose):
+            rclpy.spin_once(self, timeout_sec=0.1)
+
+
+        self.info(f"agents phases: {self.phases}")
+        self.wd = Float32()
+        self.phi_diff = Float32()
+        
+        self.position_pub = self.create_publisher(Position,'/'+ self.robot + '/cmd_position', 10)
+
+
+        #initiating some variables
+
+
+        # input("Press Enter to takeoff")
+        self.timer = self.create_timer(self.timer_period, self.timer_callback)
+
+    def timer_callback(self):
+
+        try:
+            if self.state == 0:
+                if self.has_initial_pose:
+                    # self.phase_pub.publish(self.phi_cur)
+                    self.takeoff()
+
+            elif self.state == 1:
+                self.hover() 
+            
+            elif self.state == 2: 
+                target_r = self.interpolated_points[self.current_point_index]
+                self.send_position(target_r)
+                # if np.linalg.norm(self.current_pos-target_r) < 0.05:
+                self.current_point_index +=1
+                
+                if self.current_point_index == (self.total_trajectory_length):
+                    self.current_point_index = 0
+            
+            elif self.state == 3:
+                if self.has_final:
+                    self.landing()
+
+                    if self.i_landing < len(self.t_landing)-1:
+                        self.i_landing += 1
+                    else:
+                        self.reboot()
+                        self.info('Exiting circle node')  
+                        self.destroy_node()
+                        rclpy.shutdown()             
+        except KeyboardInterrupt:
+            self.info('Exiting open loop command node')
+
+            #self.publishers[i].publish(msg)
+    
+    def _poses_changed(self, msg):
+        """
+        Topic update callback to the motion capture lib's
+           poses topic to send through the external position
+           to the crazyflie 
+        """
+        for pose in msg.poses:
+            if pose.name == self.robot:
+                robot_pose = pose.pose
+                break
+        if not self.has_initial_pose:      
+            self.initial_pose[0] = robot_pose.position.x
+            self.initial_pose[1] = robot_pose.position.y
+            self.initial_pose[2] = robot_pose.position.z   
+            self.initial_phase = np.mod(np.arctan2(self.initial_pose[1], self.initial_pose[0]),2*np.pi)   
+            self.takeoff_traj(4)
+            self.has_initial_pose = True    
+            
+        elif not self.land_flag :
+
+            self.current_pos[0] = robot_pose.position.x
+            self.current_pos[1] = robot_pose.position.y
+            self.current_pos[2] = robot_pose.position.z
+
+        elif (self.has_final == False) and (self.land_flag == True):
+            
+            self.final_pose = np.zeros(3)
+            self.info("Landing...")
+            self.final_pose[0] = robot_pose.position.x
+            self.final_pose[1] = robot_pose.position.y
+            self.final_pose[2] = robot_pose.position.z
+            self.landing_traj(2)
+            self.has_final = True
+
+
+
+    def takeoff(self):
+        self.send_position(self.r_takeoff[:,self.i_takeoff])
+        #self.info(f"Publishing to {msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}")
+        if self.i_takeoff < len(self.t_takeoff)-1:
+            self.i_takeoff += 1
+        else:
+            self.state = 1
+
+    def takeoff_traj(self,t_max):
+        #takeoff trajectory
+        self.t_takeoff = np.arange(0,t_max,self.timer_period)
+        self.r_takeoff = np.zeros((3,len(self.t_takeoff))) 
+        self.r_takeoff[0,:] += self.initial_pose[0]*np.ones(len(self.t_takeoff))
+        self.r_takeoff[1,:] += self.initial_pose[1]*np.ones(len(self.t_takeoff))
+        self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/t_max)
+
+    def landing_traj(self,t_max):
+        #landing trajectory
+        self.t_landing = np.arange(t_max,0.1,-self.timer_period)
+        self.i_landing = 0
+        self.r_landing = np.zeros((3,len(self.t_landing)))
+        self.r_landing[0,:] += self.final_pose[0]*np.ones(len(self.t_landing))
+        self.r_landing[1,:] += self.final_pose[1]*np.ones(len(self.t_landing))
+        self.r_landing[2,:] = self.hover_height*(self.t_landing/t_max)
+    
+    def _landing_callback(self, msg):
+        self.land_flag = msg.data
+        self.state = 3
+
+    def _encircle_callback(self, msg):
+        self.state = 2
+
+    def hover(self):
+        msg = Position()
+        msg.x = self.initial_pose[0]
+        msg.y = self.initial_pose[1]
+        msg.z = self.hover_height
+        self.position_pub.publish(msg)
+
+
+    def landing(self):
+        self.send_position(self.r_landing[:,self.i_landing])
+
+    def reboot(self):
+        req = Empty.Request()
+        self.reboot_client.call_async(req)
+        time.sleep(1.0)    
+
+    def send_position(self,r):
+        msg = Position()
+        msg.x = float(r[0])
+        msg.y = float(r[1])
+        msg.z = float(r[2])
+
+        self.position_pub.publish(msg)
+
+
+
+    def interpolate(self, p0, p1, n):
+        p0 = np.array(p0)
+        p1 = np.array(p1)
+        return [tuple(p0 + (p1 - p0) * t) for t in np.linspace(0, 1, n)]
+
+def main():
+    rclpy.init()
+    encirclement = Circle_distortion()
+    rclpy.spin(encirclement)
+    encirclement.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

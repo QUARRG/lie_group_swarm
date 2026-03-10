@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import quaternion
 import math
-from lie_group_swarm.utils2 import R3_so3, so3_R3
+from crazy_encirclement.utils2 import R3_so3, so3_R3
 from scipy.linalg import expm, logm
 from icecream import ic
 class Embedding():
@@ -33,19 +33,19 @@ class Embedding():
     def targets(self,agent_r,phi_prev):
             # Circle position
         pos = np.array([agent_r[0], agent_r[1], agent_r[2]-self.hover_height])
-        #Rot = self.tactic_parameters(phi_i)
-        #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
-        
+
         pos_rot = np.linalg.inv(self.Rot_des)@pos.T
         phi_i, _ = self.cart2pol(pos_rot)
 
-        #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
-
         phi_k = phi_prev[0]
         phi_j = phi_prev[2]
-        #wd = self.phi_dot
+
+        unit_i = np.array([np.cos(phi_i), np.sin(phi_i), 0])
+        unit_k = np.array([np.cos(phi_k), np.sin(phi_k), 0])
+        phi_diff = np.arccos(np.dot(unit_i,unit_k))
+
         wd = self.phi_dot_desired(phi_i, phi_j, phi_k, self.phi_dot, self.k_phi)
-            #first evolve the agent in phase
+
         v_d_hat_z = np.array([0, 0, wd])
         x = self.r * np.cos(phi_i)
         y = self.r * np.sin(phi_i)
@@ -60,8 +60,6 @@ class Embedding():
         v_d_hat_x_y = np.array([phi_dot_x, phi_dot_y, 0])
         self.Rot_des = expm(R3_so3(v_d_hat_x_y.reshape(-1,1)))
 
-
-
         pos_d = self.Rot_des@pos_d_hat.T
         # pos_d = Rot@pos_d_hat.T
         target_r_old = self.target_r.copy()
@@ -69,10 +67,8 @@ class Embedding():
         self.target_r[1] = pos_d[1]
         self.target_r[2] = pos_d[2] + self.hover_height
         self.target_r[2] = np.clip(self.target_r[2],0.15,1.5)
-        self.target_v = (self.target_r - target_r_old)/(self.dt)
-
             
-        return phi_i, self.target_r, self.target_v, phi_i, wd
+        return phi_i, self.target_r, wd, phi_diff
     
     def calc_wx(self,phi):
         return self.scale*(np.sin(phi)*np.cos(phi)-np.sin(phi)**3)
