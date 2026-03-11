@@ -10,7 +10,7 @@ To run the simulation:
 ```
 python3 crazy_encirclement/encirclement_sim.py
 ```
-# Crazyflies workspace 
+# Crazyflies  
 ## Clone the [crazyswarm2](https://github.com/dimitriasilveria/crazyswarm2.git), the [motion_capture_tracking](https://github.com/IMRCLab/motion_capture_tracking.git), and the [controller_pkg](https://github.com/dimitriasilveria/controller_pkg.git) repositories
 ## Then, select the crazyflies you intend to fly in the configuration file:
 1. Go to the file [crazyflie.yaml](crazyswarm2/crazyflie/config/crazyflies.yaml) 
