@@ -1,6 +1,6 @@
 # Decentralized Swarm Control Via SO(3) Embeddings for 3D Trajectories
 
-* This code generates periodic 3D trajectories for multi-agent systems by distorting a circle using the Lie group SO(3). The agents navigate free of collisions with minimal exchange of information, making this technique decentralized and scalable. This approach was validaded via simulation and with a swarm of Crazyflies
+This code generates periodic 3D trajectories for multi-agent systems by distorting a circle using the Lie group SO(3). The agents navigate free of collisions with minimal exchange of information, making this technique decentralized and scalable. This approach was validaded via simulation and with a swarm of Crazyflies
 
 ![Drone gif](/media/3D_encirclement.gif)
 
@@ -14,7 +14,7 @@ python3 crazy_encirclement/encirclement_sim.py
 ## Clone the [crazyswarm2](https://github.com/dimitriasilveria/crazyswarm2.git), the [motion_capture_tracking](https://github.com/IMRCLab/motion_capture_tracking.git), and the [controller_pkg](https://github.com/dimitriasilveria/controller_pkg.git) repositories
 ## Then, select the crazyflies you intend to fly in the configuration file:
 1. Go to the file [crazyflie.yaml](crazyswarm2/crazyflie/config/crazyflies.yaml) 
-2. Under the drone's name, set the flag "enable"
+2. Under the drone's name, set the flag "enable" and make sure the drones are tagged in the mocap system
 3. Open a terminal, go to the src folder of your workspace:
 
     ```
@@ -46,7 +46,7 @@ ros2 launch crazy_encirclement encirclement_launch.py
 
 * This launch runs the motion capture, the watch dog, the crazy server, the agents order node, and the crazy_encirclement. 
 
-6- After all of them took off, in another terminal, run the the node that sends the drone a flag to start the encirclement trajectory:
+3- After all of them took off, in another terminal, run the the node that sends the drone a flag to start the encirclement trajectory:
 
 ```
 ros2 run controller_pkg encircling
