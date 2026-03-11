@@ -97,7 +97,7 @@ crazy_encirclement/
 launch/
 ├── encirclement_launch.py   # Full multi-drone ROS2 launch (mocap + swarm)
 ```
-Go to [docs](docs/parameters.md) to sell all the parameters and where to change them
+Go to [docs](docs/parameters.md) to see all the parameters and where to change them
 ---
 
 # Simulation
