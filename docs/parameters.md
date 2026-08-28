@@ -6,8 +6,8 @@ Controls how aggressively agents correct their phase separation. Increasing `k_p
 
 | Context | File | Line | Default |
 |---|---|---|---|
-| Real drones (ROS2) | `crazy_encirclement/circle_distortion.py` | 36 | `8` |
-| Simulation | `crazy_encirclement/encirclement_sim.py` | 22 | `10.0` |
+| Real drones (ROS2) | `lie_group_swarm/circle_distortion.py` | 36 | `8` |
+| Simulation | `lie_group_swarm/encirclement_sim.py` | 22 | `10.0` |
 
 ```python
 # circle_distortion.py, line 36
@@ -22,8 +22,8 @@ The baseline angular speed at which every agent traverses the circle (in rad/s).
 
 | Context | File | Line | Default |
 |---|---|---|---|
-| Real drones (ROS2) | `crazy_encirclement/circle_distortion.py` | 37 | `0.8` rad/s |
-| Simulation | `crazy_encirclement/encirclement_sim.py` | 27 | `1.5` rad/s |
+| Real drones (ROS2) | `lie_group_swarm/circle_distortion.py` | 37 | `0.8` rad/s |
+| Simulation | `lie_group_swarm/encirclement_sim.py` | 27 | `1.5` rad/s |
 
 ```python
 # circle_distortion.py, line 37
@@ -48,8 +48,8 @@ Governs the amplitude of the SO(3) deformation that lifts the circle into 3D. `s
 
 | Context | File | Line | Default |
 |---|---|---|---|
-| Real drones (ROS2) | `crazy_encirclement/embedding_SO3_ros.py` | 16 | `0.4` |
-| Simulation | `crazy_encirclement/embedding_SO3_sim.py` | 19 | `0.6` |
+| Real drones (ROS2) | `lie_group_swarm/embedding_SO3_ros.py` | 16 | `0.4` |
+| Simulation | `lie_group_swarm/embedding_SO3_sim.py` | 19 | `0.6` |
 
 ```python
 # embedding_SO3_ros.py, line 16
@@ -115,8 +115,8 @@ PD gains for the low-level position tracking controller (simulation only):
 
 | Parameter | File | Line | Default |
 |---|---|---|---|
-| `kx` (position) | `crazy_encirclement/encirclement_sim.py` | 23 | `6` |
-| `kv` (velocity) | `crazy_encirclement/encirclement_sim.py` | 24 | `6.5 * sqrt(2)` |
+| `kx` (position) | `lie_group_swarm/encirclement_sim.py` | 23 | `6` |
+| `kv` (velocity) | `lie_group_swarm/encirclement_sim.py` | 24 | `6.5 * sqrt(2)` |
 
 ---
 

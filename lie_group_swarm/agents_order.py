@@ -8,7 +8,7 @@ from rclpy.duration import Duration
 from std_srvs.srv import Empty
 from std_msgs.msg import Float32MultiArray, Float32
 
-from crazy_encirclement.utils import generate_reference
+from lie_group_swarm.utils import generate_reference
 from functools import partial
 
 import time

@@ -87,7 +87,7 @@ u_i = kx · e_x + kv · d(e_x)/dt
 ## File Structure
 
 ```
-crazy_encirclement/
+lie_group_swarm/
 ├── circle_distortion.py     # ROS2 node: main control loop for real drones
 ├── embedding_SO3_ros.py     # SO(3) embedding class used by real drones
 ├── embedding_SO3_sim.py     # SO(3) embedding class used by simulation
@@ -105,7 +105,7 @@ Go to [docs](docs/parameters.md) to see all the parameters and where to change t
 To run the simulation:
 
 ```
-python3 crazy_encirclement/encirclement_sim.py
+python3 lie_group_swarm/encirclement_sim.py
 ```
 
 Default simulation parameters (edit in `encirclement_sim.py` lines 20–28):
@@ -154,13 +154,13 @@ ros2 run controller_pkg landing
 ```
 * To send the landing command, click on the terminal where this node is runnig and press ```Enter```
 
-2- On another terminal, run the [encirclement_launch.py](crazy_encirclement/launch/encirclement_launch.py) file:
+2- On another terminal, run the [encirclement_launch.py](lie_group_swarm/launch/encirclement_launch.py) file:
 
 ```
-ros2 launch crazy_encirclement encirclement_launch.py
+ros2 launch lie_group_swarm encirclement_launch.py
 ```
 
-* This launch runs the motion capture, the watch dog, the crazy server, the agents order node, and the crazy_encirclement.
+* This launch runs the motion capture, the watch dog, the crazy server, the agents order node, and the lie_group_swarm.
 
 3- After all of them took off, in another terminal, run the the node that sends the drone a flag to start the encirclement trajectory:
 

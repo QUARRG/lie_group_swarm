@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import quaternion
 import math
-from crazy_encirclement.utils2 import R3_so3, so3_R3
+from lie_group_swarm.utils2 import R3_so3, so3_R3
 from scipy.linalg import expm, logm
 from icecream import ic
 class Embedding():
